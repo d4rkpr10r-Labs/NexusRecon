@@ -25,6 +25,28 @@ class TestRegistry:
         assert tool.name == "test_tool"
         assert tool.tier == Tier.T0
 
+    def test_clear_campaign_context_clears_proxy_manager(self):
+        """Campaign isolation: clear must detach proxy routing too."""
+        from unittest.mock import MagicMock
+
+        registry = ToolRegistry()
+        proxy = MagicMock(name="ProxyManager")
+        registry.set_campaign_context(
+            scope_guard=MagicMock(),
+            cache=None,
+            audit_log=None,
+            stealth_profile=None,
+            rate_limiter=None,
+            proxy_manager=proxy,
+        )
+        assert registry._proxy_manager is proxy
+        registry.clear_campaign_context()
+        assert registry._proxy_manager is None
+        assert registry._scope_guard is None
+        assert registry._cache is None
+        assert registry._audit_log is None
+        assert registry._rate_limiter is None
+
     def test_decorator_registration(self):
         registry = get_registry()
         before = len(registry.list_tools())

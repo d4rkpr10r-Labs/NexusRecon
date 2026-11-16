@@ -148,7 +148,11 @@ where = ["."]
 include = ["nexusrecon*"]
 
 [tool.setuptools.package-data]
-"nexusrecon" = ["reports/templates/*.j2", "py.typed"]
+"nexusrecon" = [
+    "reports/templates/*.j2",
+    "py.typed",
+    "assets/nexusrecon-verify.py",
+]
 
 [tool.ruff]
 line-length = 100

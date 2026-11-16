@@ -137,10 +137,23 @@ async def test_dynamic_dispatcher_with_wordpress_finding():
 
     # Dispatcher calls LLM; MockLLM produces non-JSON prose → plan is []
     # A real LLM would produce dispatch JSON. Both outcomes are accepted.
+    # Only soft-skip known environment gaps — unexpected dispatcher bugs must fail.
     try:
         result_state = await run_dynamic_dispatch(state)
     except Exception as exc:
-        pytest.skip(f"Dispatcher error (likely no LLM): {exc}")
+        msg = str(exc).lower()
+        soft = (
+            "api key" in msg
+            or "openai" in msg
+            or "anthropic" in msg
+            or "connection" in msg
+            or "network" in msg
+            or "timeout" in msg
+            or "llm" in msg
+        )
+        if soft:
+            pytest.skip(f"Dispatcher unavailable in this environment: {exc}")
+        raise
 
     plan = result_state.get("dynamic_dispatch_log", [])
     assert isinstance(plan, list), "dynamic_dispatch_log must be a list"

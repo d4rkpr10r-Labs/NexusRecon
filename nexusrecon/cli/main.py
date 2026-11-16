@@ -564,7 +564,7 @@ def validate(scope: str = typer.Argument(..., help="Path to scope YAML file")) -
 
 @app.command()
 def resume(campaign_id: str = typer.Argument(..., help="Campaign ID to resume")) -> None:
-    """Resume a campaign from its last checkpoint."""
+    """Resume a campaign from its last checkpoint via the shared campaign runner."""
     console.print(f"[bold green]Resuming campaign[/bold green] [cyan]{campaign_id}[/cyan]")
 
     # Find campaign directory by scanning output dirs
@@ -590,20 +590,91 @@ def resume(campaign_id: str = typer.Argument(..., help="Campaign ID to resume"))
     completed = set(state_data.get("completed_phases", []))
     current = state_data.get("current_phase", "phase1")
 
-    console.print(f"Completed phases: {', '.join(completed)}")
+    console.print(f"Completed phases: {', '.join(sorted(completed)) or '(none)'}")
     console.print(f"Current phase: {current}")
     console.print(f"Findings so far: {len(state_data.get('findings', []))}")
 
-    # Load scope metadata to reconstruct scope model
+    scope_meta: dict = {}
     if scope_meta_path and scope_meta_path.exists():
-        scope_meta = json.loads(scope_meta_path.read_text())
+        scope_meta = json.loads(scope_meta_path.read_text(encoding="utf-8"))
         console.print(f"Client: {scope_meta.get('engagement', {}).get('client', 'unknown')}")
         console.print(f"Max Tier: {scope_meta.get('constraints', {}).get('max_tier', 'T0')}")
 
-    # Skip completed phases, continue from current
-    console.print("\n[bold green]Continuing campaign execution...[/bold green]")
+    # Prefer the original scope YAML so resume shares run()'s ScopeGuard + OPSEC bind.
+    scope_model: ScopeModel | None = None
+    scope_file = scope_meta.get("scope_file_path")
+    if scope_file and Path(scope_file).exists():
+        try:
+            scope_model = ScopeModel.from_yaml(scope_file)
+        except Exception as exc:
+            console.print(f"[yellow]Could not reload scope file {scope_file}: {exc}[/yellow]")
 
-    # Use the same state dict structure as run()
+    if scope_model is None:
+        # Reconstruct a minimal ScopeModel from metadata so run_campaign can
+        # enforce tier floors. Full in-scope lists may be incomplete without
+        # the original YAML — operators should keep the scope file available.
+        try:
+            engagement = dict(scope_meta.get("engagement") or {})
+            engagement.setdefault("client", "unknown")
+            engagement.setdefault(
+                "engagement_id", state_data.get("engagement_id") or "unknown",
+            )
+            engagement.setdefault("authorized_by", "resume")
+            engagement.setdefault("authorization_date", "1970-01-01")
+            engagement.setdefault("start_date", "1970-01-01")
+            engagement.setdefault("end_date", "2099-01-01")
+            engagement.setdefault(
+                "signed_sow_hash",
+                "sha256:" + ("0" * 64),
+            )
+            scope_model = ScopeModel.model_validate({
+                "engagement": engagement,
+                "constraints": scope_meta.get("constraints") or {},
+            })
+            scope_model.scope_hash = scope_meta.get("scope_hash") or state_data.get("scope_hash")
+        except Exception as exc:
+            console.print(f"[bold red]Cannot reconstruct scope for resume:[/bold red] {exc}")
+            raise typer.Exit(1)
+
+    from nexusrecon.core.campaign_runner import run_campaign
+    from nexusrecon.opsec.setup import ProxyRequiredError, build_opsec
+    from nexusrecon.tools.registry import get_registry
+
+    mode_raw = str(state_data.get("mode") or "medium").lower()
+    try:
+        campaign_mode = CampaignMode(mode_raw)
+    except ValueError:
+        campaign_mode = CampaignMode.MEDIUM
+
+    campaign = CampaignManager(
+        scope=scope_model,
+        mode=campaign_mode,
+        campaign_id=campaign_id,
+    )
+    # Point campaign_dir at the discovered path (rglob) rather than assuming
+    # the reconstructed client/engagement path still matches.
+    campaign.campaign_dir = state_path.parent
+    campaign.report_dir = campaign.campaign_dir / "reports"
+    campaign.artifacts_dir = campaign.campaign_dir / "artifacts"
+    campaign.logs_dir = campaign.campaign_dir / "logs"
+    try:
+        campaign.setup()
+    except Exception as e:
+        console.print(f"[bold red]Campaign setup failed:[/bold red] {e}")
+        raise typer.Exit(1)
+
+    scope_guard = ScopeGuard(scope_model)
+    try:
+        opsec = build_opsec(scope_model, get_config())
+    except ProxyRequiredError as e:
+        console.print(f"[bold red]OPSEC: {e}[/bold red]")
+        raise typer.Exit(1)
+    get_registry().set_campaign_context(
+        scope_guard, campaign.cache, campaign.audit_log, **opsec
+    )
+
+    console.print("\n[bold green]Continuing campaign execution via shared runner...[/bold green]")
+
     state = {
         "campaign_id": state_data.get("campaign_id", campaign_id),
         "engagement_id": state_data.get("engagement_id", ""),
@@ -629,81 +700,51 @@ def resume(campaign_id: str = typer.Argument(..., help="Campaign ID to resume"))
         "errors": state_data.get("errors", []),
         "agent_messages": state_data.get("agent_messages", []),
         "report_paths": {},
+        "dispatch_mode": state_data.get("dispatch_mode", "lite"),
+        "strategy": state_data.get("strategy"),
+        "dispatch_policy_name": state_data.get("dispatch_policy_name"),
     }
 
-    # Import and run remaining phases
     try:
-        from nexusrecon.graph.nodes import (
-            phase1_passive_footprinting,
-            phase2_identity_cloud,
-            phase3_code_leakage,
-            phase4_correlation,
-            phase5_light_active,
-            phase6_active,
-            phase7_vuln_pretext,
-            phase8_attack_surface,
-            phase9_reporting,
-        )
-
-        phases = [
-            ("phase1", "Passive Footprinting", phase1_passive_footprinting),
-            ("phase2", "Identity & Cloud", phase2_identity_cloud),
-            ("phase3", "Code Leakage", phase3_code_leakage),
-            ("phase4", "Correlation", phase4_correlation),
-            ("phase5", "Light Active", phase5_light_active),
-            ("phase6", "Active (T3)", phase6_active),
-            ("phase7", "Vuln & Pretext", phase7_vuln_pretext),
-            ("phase8", "Attack Surface", phase8_attack_surface),
-            ("phase9", "Reporting", phase9_reporting),
-        ]
-
-        # Parse max tier from scope metadata
-        max_tier = 3
-        if scope_meta_path and scope_meta_path.exists():
-            tier_str = scope_meta.get("constraints", {}).get("max_tier", "T0")
-            if tier_str.startswith("T"):
-                try:
-                    max_tier = int(tier_str[1])
-                except (ValueError, IndexError):
-                    max_tier = 0
-        phase_map = {
-            "phase1": 0, "phase2": 0, "phase3": 0, "phase4": 0,
-            "phase5": 2, "phase6": 3, "phase7": 0, "phase8": 0, "phase9": 0,
-        }
-
         with Progress(
             SpinnerColumn(),
             TextColumn("[progress.description]{task.description}"),
             console=console,
         ) as progress:
-            async def _resume_campaign_phases() -> dict:
-                s = state
-                for phase_id, phase_name, phase_fn in phases:
-                    if phase_id in completed:
-                        progress.add_task(f"[dim]Skipped (done): {phase_name}[/dim]")
-                        continue
-                    if phase_map.get(phase_id, 0) > max_tier:
-                        progress.add_task(f"[dim]Skipped: {phase_name} (above max tier)[/dim]")
-                        continue
-                    task = progress.add_task(f"Running: {phase_name}...", total=None)
-                    try:
-                        s = await phase_fn(s)
-                        progress.update(task, description=f"[green]Complete: {phase_name}[/green]")
-                    except Exception as e:
-                        s["errors"].append(f"{phase_id}: {str(e)}")
-                        progress.update(task, description=f"[red]Error in {phase_name}: {e}[/red]")
-                return s
+            _progress_tasks: dict = {}
 
-            state = asyncio.run(_resume_campaign_phases())
+            def _cli_on_event(evt: dict) -> None:
+                etype = evt.get("type", "")
+                phase_id = evt.get("phase", "")
+                name = evt.get("name", phase_id)
+                if etype == "phase_start":
+                    task = progress.add_task(f"Running: {name}...", total=None)
+                    _progress_tasks[phase_id] = task
+                elif etype == "phase_end":
+                    t = _progress_tasks.get(phase_id)
+                    if t is not None:
+                        progress.update(t, description=f"[green]Complete: {name}[/green]")
+                elif etype == "phase_skipped":
+                    progress.add_task(
+                        f"[dim]Skipped: {name} ({evt.get('reason', '')})[/dim]"
+                    )
+                elif etype == "campaign_error":
+                    t = _progress_tasks.get(phase_id)
+                    msg = f"[red]Error in {name}: {evt.get('error', '')}[/red]"
+                    if t is not None:
+                        progress.update(t, description=msg)
+                    else:
+                        progress.add_task(msg)
 
-        # Save updated state
-        campaign_dir = state_path.parent
-        campaign_dir.joinpath("state.json").write_text(
-            json.dumps(state, indent=2, default=str), encoding="utf-8"
-        )
+            state = asyncio.run(
+                run_campaign(state, campaign, scope_model, on_event=_cli_on_event)
+            )
+
+        campaign.save_state(state)
+        get_registry().clear_campaign_context()
 
         # Generate reports
-        report_dir = campaign_dir / "reports"
+        report_dir = campaign.report_dir
         engine = ReportEngine(
             campaign_id=state["campaign_id"],
             engagement_id=state.get("engagement_id", ""),
@@ -715,7 +756,7 @@ def resume(campaign_id: str = typer.Argument(..., help="Campaign ID to resume"))
         console.print("\n" + Panel(
             f"Findings: {len(state.get('findings', []))}\n"
             f"Reports: {len(report_paths)}\n"
-            f"Output: {campaign_dir}",
+            f"Output: {campaign.campaign_dir}",
             title="[bold green]Campaign Resumed Complete[/bold green]",
             border_style="green",
         ))

@@ -207,15 +207,22 @@ def _map_note(
 
 
 def _map_secret(entity: dict[str, Any]) -> dict[str, Any]:
-    # CRITICAL: never serialise the secret VALUE. The audit
-    # chain reasons about secrets at the metadata level only.
-    obj = _base_object("note", entity["value"])
+    # CRITICAL: never serialise the secret VALUE. SecretEntity.value
+    # is the sensitive material itself (API key, token, etc.). Seed the
+    # STIX id from a one-way digest so re-exports stay stable without
+    # embedding the plaintext in id or content.
+    secret_type = str(entity.get("secret_type") or "unknown")
+    raw = str(entity.get("value") or "")
+    digest = uuid.uuid5(NEXUSRECON_NS, f"secret::{secret_type}::{raw}").hex
+    seed = f"secret:{secret_type}:{digest}"
+    obj = _base_object("note", seed)
     obj["abstract"] = "Secret artifact (value redacted)"
     obj["content"] = (
-        f"Secret of type {entity.get('secret_type', 'unknown')!r} "
-        f"observed at {entity['value']!r}. Value not exported."
+        f"Secret of type {secret_type!r} observed. "
+        f"Value not exported (ref={digest[:12]})."
     )
-    obj["x_nexusrecon_secret_type"] = entity.get("secret_type", "")
+    obj["x_nexusrecon_secret_type"] = secret_type
+    obj["x_nexusrecon_secret_ref"] = digest[:12]
     return obj
 
 

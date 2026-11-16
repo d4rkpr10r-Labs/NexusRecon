@@ -13,6 +13,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+import structlog
+
+log = structlog.get_logger(__name__)
+
 # (phase_id, display_name, tier_floor)
 _PHASE_TIER_FLOOR: dict[str, int] = {
     "phase1": 0,
@@ -134,7 +138,16 @@ async def run_campaign(
         state.setdefault("errors", []).append(f"cost_tracker_bind: {ct_err}")
 
     s = state
+    completed = set(s.get("completed_phases") or [])
     for phase_id, phase_name, phase_fn in phases:
+        if phase_id in completed:
+            _emit({
+                "type": "phase_skipped",
+                "phase": phase_id,
+                "name": phase_name,
+                "reason": "already completed",
+            })
+            continue
         if _PHASE_TIER_FLOOR.get(phase_id, 0) > max_tier:
             _emit({
                 "type": "phase_skipped",
@@ -146,8 +159,14 @@ async def run_campaign(
 
         try:
             campaign.begin_phase(phase_id, phase_id)
-        except Exception:
-            pass
+        except Exception as begin_err:
+            log.warning(
+                "campaign begin_phase failed",
+                phase=phase_id, error=str(begin_err),
+            )
+            s.setdefault("errors", []).append(
+                f"{phase_id}/begin_phase: {begin_err}"
+            )
         _emit({
             "type": "phase_start",
             "phase": phase_id,
@@ -159,8 +178,14 @@ async def run_campaign(
             s = await phase_fn(s)
             try:
                 campaign.save_state(s)
-            except Exception:
-                pass
+            except Exception as save_err:
+                log.error(
+                    "campaign checkpoint failed",
+                    phase=phase_id, error=str(save_err),
+                )
+                s.setdefault("errors", []).append(
+                    f"{phase_id}/save_state: {save_err}"
+                )
             findings_count = len(s.get("findings", []))
             # Real entity count for the run-health summary (F-A5). phase4/phase8
             # persist the built EntityGraph as state["entity_graph"]
@@ -174,8 +199,14 @@ async def run_campaign(
             entities_count = len(entity_graph_state.get("nodes", []))
             try:
                 campaign.end_phase(phase_id, findings_count, entities_count)
-            except Exception:
-                pass
+            except Exception as end_err:
+                log.warning(
+                    "campaign end_phase failed",
+                    phase=phase_id, error=str(end_err),
+                )
+                s.setdefault("errors", []).append(
+                    f"{phase_id}/end_phase: {end_err}"
+                )
             _emit({
                 "type": "phase_end",
                 "phase": phase_id,
@@ -191,8 +222,14 @@ async def run_campaign(
                 s = await reflection_node(s)
                 try:
                     campaign.save_state(s)
-                except Exception:
-                    pass
+                except Exception as save_err:
+                    log.error(
+                        "campaign checkpoint failed after reflection",
+                        phase=phase_id, error=str(save_err),
+                    )
+                    s.setdefault("errors", []).append(
+                        f"{phase_id}/save_state_reflection: {save_err}"
+                    )
                 new_dispatches = len(s.get("dispatch_log", []) or []) - prior_dispatches
                 if new_dispatches > 0:
                     _emit({

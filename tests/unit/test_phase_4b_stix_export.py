@@ -221,21 +221,15 @@ class TestEntityMapping:
     def test_secret_redacted(self, graph: EntityGraph):
         """Auditability First: secret VALUE must NEVER appear
         in the exported bundle."""
+        secret_value = "AKIA1234567890SECRET"
         graph.add_secret(
-            "AKIA1234567890SECRET",  # the value
+            secret_value,
             secret_type="aws_access_key",
             source="trufflehog",
         )
         bundle = build_stix_bundle(graph).bundle
-        # Secret value is the entity's value — but we
-        # explicitly DO NOT export anything secret. We only
-        # record THAT a secret was observed of a certain
-        # type. The serialiser currently includes the
-        # identifier (which IS the value here in this test
-        # entity since the value field doubles as identifier
-        # for SecretEntity); however the secret_type IS
-        # surfaced. Confirm the helper text mentions
-        # redaction.
+        blob = json.dumps(bundle)
+        assert secret_value not in blob
         notes = _objects_of_type(bundle, "note")
         secret_notes = [
             n for n in notes
@@ -244,6 +238,8 @@ class TestEntityMapping:
         assert len(secret_notes) == 1
         assert "redacted" in secret_notes[0]["abstract"].lower()
         assert secret_notes[0]["x_nexusrecon_secret_type"] == "aws_access_key"
+        assert secret_value not in secret_notes[0].get("content", "")
+        assert secret_value not in secret_notes[0].get("id", "")
 
     def test_hypothesis_to_note(self, graph: EntityGraph):
         graph.add_hypothesis(
