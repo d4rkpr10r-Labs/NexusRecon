@@ -93,6 +93,27 @@ Default campaign tooling, graph merge, reporting, and unit/integration suites ar
 - **Evidence:** `entity_graph.from_state` takes first source only for subdomains; ROADMAP item 8.
 - **Fix:** Not applied (needs careful multi-source restore). Backlog.
 
+### F-012 — `run --resume` rebuilt empty live state
+- **Severity:** High (re-runs all phases from blank intel)
+- **Evidence:** Architecture lead report — `cli/main.py` built fresh `completed_phases: []` after CampaignManager load. Confirmed on branch before follow-up patch.
+- **Fix:** Applied — hydrate live dict from `state.json` when `--resume` / `is_resume`.
+- **Residual:** TUI “Resume” still opens Results only (F-013); LangGraph SqliteSaver unused (F-014).
+
+### F-013 — TUI Resume opens ResultsScreen only
+- **Severity:** Medium (false resume UX)
+- **Evidence:** `tui/screens/campaigns.py:274-278`; architecture leads report.
+- **Fix:** Not applied (UI workflow). Backlog.
+
+### F-014 — LangGraph SqliteSaver non-functional
+- **Severity:** Medium
+- **Evidence:** `workflow.py` compiles checkpointer but `astream` lacks `thread_id`/config; default `:memory:`.
+- **Fix:** Not applied. Backlog (prefer deprecating third spine).
+
+### F-015 — TUI `_TOTAL_PHASES` out of sync
+- **Severity:** Low
+- **Evidence:** Was 10; runner has 12 phases.
+- **Fix:** Applied — set to 12 with comment pointing at campaign_runner.
+
 ---
 
 ## Lead close-out (1–10)
@@ -103,12 +124,14 @@ Default campaign tooling, graph merge, reporting, and unit/integration suites ar
 | 2 | PARTIAL — mocked E2E passes; live success blocked without keys |
 | 3 | FIXED (narrowed skip) |
 | 4 | FIXED |
-| 5 | FIXED (runner + CLI resume) |
+| 5 | FIXED (runner + CLI `resume` + `run --resume` hydrate); TUI/LangGraph residual F-013/F-014 |
 | 6 | FIXED (log/errors; not abort) |
 | 7 | FIXED (proxy clear) |
 | 8 | CLOSED as intentional dormancy |
 | 9 | OPEN structural — F-006 |
 | 10 | PARTIAL — verifier packaged; burp pack deferred |
+
+Architecture deep-dive (sibling): `/cursor/stores/bc-5320a189-5267-455a-b4f4-deb5bdee1a88/internal/nexusrecon-architecture-leads.md`
 
 ---
 
@@ -130,6 +153,7 @@ Default campaign tooling, graph merge, reporting, and unit/integration suites ar
 - `nexusrecon/export/stix.py` — secret redaction
 - `nexusrecon/tools/registry.py` — clear proxy
 - `nexusrecon/core/campaign_runner.py` — completed_phases skip; log checkpoint failures
-- `nexusrecon/cli/main.py` — resume → shared runner + OPSEC bind
+- `nexusrecon/cli/main.py` — `resume` → shared runner + OPSEC bind; `run --resume` hydrates live state
+- `nexusrecon/tui/screens/runner.py` — `_TOTAL_PHASES = 12`
 - `nexusrecon/assets/nexusrecon-verify.py` + `pyproject.toml` package-data
-- Tests: STIX, registry, resume skip, packaged verifier, smoke skip narrowing
+- Tests: STIX, registry, resume skip, run-resume hydrate, packaged verifier, smoke skip narrowing

@@ -30,9 +30,18 @@
 - `docs/reviews/2026-11-16-10ead11/CHECKPOINT.md`
 - `docs/reviews/2026-11-16-10ead11/PRE_REPAIR_SCORECARD.md`
 
+## Follow-up from architecture explore
+
+Incorporated [Map architecture & leads](bc-bbed39bb-848c-5200-8b2c-e20f1e027759) report at  
+`/cursor/stores/bc-5320a189-5267-455a-b4f4-deb5bdee1a88/internal/nexusrecon-architecture-leads.md`:
+- Fixed residual **`run --resume` empty live state** (F-012).
+- Fixed TUI **`_TOTAL_PHASES`** drift (F-015).
+- Logged open **TUI Resume → Results only** (F-013) and **SqliteSaver unused** (F-014).
+
 ## Next actions (if interrupted)
 
 1. Human review of local branch repairs; push only if owner lifts REPAIR_MODE publish ban.
 2. README Status honesty pass (BACKLOG P0.3).
 3. `from_state` multi-source restore (P0.4).
 4. Watch re-collect slice or permanent relabel (P2.9).
+5. TUI true resume (F-013).

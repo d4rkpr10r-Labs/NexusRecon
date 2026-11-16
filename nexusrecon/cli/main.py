@@ -428,6 +428,49 @@ def run(
         "report_paths": {},
     }
 
+    # ``run --resume`` previously rebuilt an empty live dict after
+    # CampaignManager loaded pydantic metadata, which forced every
+    # phase to re-run from blank intel. Hydrate from state.json so
+    # completed_phases + intel buckets survive into run_campaign.
+    if resume or getattr(campaign, "is_resume", False):
+        prior_path = Path(campaign.campaign_dir) / "state.json"
+        if prior_path.exists():
+            try:
+                prior = json.loads(prior_path.read_text(encoding="utf-8"))
+            except Exception as exc:
+                console.print(
+                    f"[bold red]Resume state unreadable:[/bold red] {prior_path}: {exc}"
+                )
+                raise typer.Exit(1)
+            if isinstance(prior, dict):
+                preserve = {
+                    "validate_credentials",
+                    "generate_phishing_drafts",
+                    "generate_obsidian",
+                    "pretext_targets",
+                    "max_llm_cost_usd",
+                }
+                for key, value in prior.items():
+                    if key in preserve:
+                        continue
+                    state[key] = value
+                # Re-apply this invocation's CLI overrides.
+                state["validate_credentials"] = validate_creds
+                state["generate_phishing_drafts"] = generate_phishing
+                state["generate_obsidian"] = obsidian
+                state["dispatch_mode"] = (
+                    dispatch_mode if dispatch_mode in ("lite", "full", "off") else "lite"
+                )
+                state["strategy"] = strategy.to_dict()
+                state["dispatch_policy_name"] = strategy.dispatch_policy_name
+                if seed_list:
+                    state["seeds"] = seed_list
+                console.print(
+                    f"[dim]Resumed live state:[/dim] "
+                    f"{len(state.get('completed_phases') or [])} phases done, "
+                    f"{len(state.get('findings') or [])} findings"
+                )
+
     # Run the campaign via the reusable campaign_runner (V3 Move 1 refactor —
     # both CLI and TUI share this loop).
     try:
