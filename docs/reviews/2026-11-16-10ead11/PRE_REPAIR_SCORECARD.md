@@ -9,7 +9,7 @@ Operational state: default path | explicitly enabled | standalone | partially in
 | Claim / surface | Operational state | Score | Notes |
 |-----------------|-------------------|-------|-------|
 | Default campaign run (phases + reports) | default path | PARTIAL | Integration tests pass with mocks; live keys often absent |
-| Living graph entities/edges | default path | VERIFIED | Unit + integration; provenance writers incomplete |
+| Living graph entities/edges | default path | VERIFIED | Unit + integration; provenance writers on default path (NEX-19) |
 | Dynamic dispatch / reflection | default path | PARTIAL | Real loop; MockLLM often empty plan; smoke catch-all skip |
 | Strategy criteria / budgets / kill | partially integrated | BROKEN | Authored, never enforced (ROADMAP) |
 | Cost simulation abort | partially integrated | BROKEN | Often $0.00; no abort |

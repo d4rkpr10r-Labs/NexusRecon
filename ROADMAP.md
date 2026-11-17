@@ -113,8 +113,10 @@ exists actually deliver on its claim.
        and delegates to `export_pyvis_html` (the full type-colour map + edge
        labels) instead of reading keys `to_dict()` never emitted. Regression:
        `tests/unit/test_step_0_0_graph_wireup.py::TestEntityGraphEnrichment`.
-       Follow-up: thread per-source `ProvenanceRecord` writers (still unwired)
-       before re-advertising "per-source provenance."
+       Follow-up: thread per-source `ProvenanceRecord` writers — *done
+       (NEX-19)*: `add_*` helpers + merge union + report §9 entity
+       provenance table; audit `response_hash`→`evidence_hash` join still
+       deferred.
 
 5. [x] **Broaden degraded-tool detection.** Only 4 of 97 tools overrode
        `assess_result` (whois/nuclei/sslyze/wafw00f), so a silent failure in

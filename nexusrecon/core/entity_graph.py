@@ -87,6 +87,56 @@ _EXCLUSIVE_REL_TYPES: frozenset[str] = frozenset({
 })
 
 
+def _provenance_key(rec: Any) -> tuple[str, str | None, str | None]:
+    """Dedup key for provenance union on entity merge."""
+    if isinstance(rec, dict):
+        return (
+            str(rec.get("source") or ""),
+            rec.get("evidence_hash"),
+            rec.get("tool_name"),
+        )
+    return (
+        str(getattr(rec, "source", "") or ""),
+        getattr(rec, "evidence_hash", None),
+        getattr(rec, "tool_name", None),
+    )
+
+
+def _serialize_provenance(rec: Any) -> dict[str, Any]:
+    """Normalize a ProvenanceRecord / dict for graph node storage."""
+    if hasattr(rec, "model_dump"):
+        data = rec.model_dump()
+    elif isinstance(rec, dict):
+        data = dict(rec)
+    else:
+        data = {
+            "source": str(getattr(rec, "source", "")),
+            "timestamp": getattr(rec, "timestamp", None),
+            "evidence_hash": getattr(rec, "evidence_hash", None),
+            "tool_name": getattr(rec, "tool_name", None),
+        }
+    ts = data.get("timestamp")
+    if isinstance(ts, datetime):
+        data["timestamp"] = ts.isoformat()
+    return data
+
+
+def _merge_provenance_lists(
+    existing: list[Any],
+    incoming: list[Any],
+) -> list[dict[str, Any]]:
+    """Union provenance observations without dropping prior records."""
+    out: list[dict[str, Any]] = []
+    seen: set[tuple[str, str | None, str | None]] = set()
+    for rec in list(existing or []) + list(incoming or []):
+        key = _provenance_key(rec)
+        if not key[0] or key in seen:
+            continue
+        seen.add(key)
+        out.append(_serialize_provenance(rec))
+    return out
+
+
 class EntityGraph:
     """
     Directed entity graph with deduplication and provenance tracking.
@@ -231,6 +281,13 @@ class EntityGraph:
             existing_sources = set(existing_data.get("sources", []))
             existing_sources.update(entity.sources)
             existing_data["sources"] = list(existing_sources)
+            # Merge provenance records (NEX-19 / P4.14) — union by
+            # (source, evidence_hash, tool_name); do not drop prior
+            # observations the way sticky metadata merge would.
+            existing_data["provenance"] = _merge_provenance_lists(
+                existing_data.get("provenance") or [],
+                entity.provenance,
+            )
             # Merge tags
             existing_tags = set(existing_data.get("tags", []))
             existing_tags.update(entity.tags)
@@ -244,7 +301,8 @@ class EntityGraph:
             # Merge extra metadata fields
             for k, v in entity.model_dump().items():
                 if k not in ("entity_id", "entity_type", "value", "sources",
-                             "tags", "confidence", "first_seen", "last_seen"):
+                             "tags", "confidence", "first_seen", "last_seen",
+                             "provenance"):
                     if v and not existing_data.get(k):
                         existing_data[k] = v
             log.debug("Merged entity", entity_type=entity.entity_type, value=entity.value)
@@ -273,10 +331,11 @@ class EntityGraph:
         # New entity
         entity_id = entity.entity_id
         data = entity.model_dump()
-        # Serialize datetimes
+        # Serialize datetimes (top-level + nested provenance timestamps)
         for k, v in data.items():
             if isinstance(v, datetime):
                 data[k] = v.isoformat()
+        data["provenance"] = _merge_provenance_lists([], entity.provenance)
         self.graph.add_node(entity_id, **data)
         self._value_index[idx_key] = entity_id
         log.debug("Added entity", entity_type=entity.entity_type.value, value=entity.value)
@@ -409,29 +468,33 @@ class EntityGraph:
     # ── Convenience entity builders ───────────────────────────────────────────
 
     def add_domain(self, domain: str, source: str, **kwargs: Any) -> str:
-        e = DomainEntity(value=domain, sources=[source], **kwargs)
+        e = DomainEntity(value=domain, **kwargs)
+        e.add_provenance(source)
         return self.add_entity(e)
 
     def add_subdomain(self, subdomain: str, parent: str, source: str, **kwargs: Any) -> str:
-        e = SubdomainEntity(value=subdomain, parent_domain=parent, sources=[source], **kwargs)
+        e = SubdomainEntity(value=subdomain, parent_domain=parent, **kwargs)
+        e.add_provenance(source)
         return self.add_entity(e)
 
     def add_ip(self, ip: str, source: str, **kwargs: Any) -> str:
-        e = IPAddressEntity(value=ip, sources=[source], **kwargs)
+        e = IPAddressEntity(value=ip, **kwargs)
+        e.add_provenance(source)
         return self.add_entity(e)
 
     def add_email(self, email: str, source: str, **kwargs: Any) -> str:
         parts = email.lower().split("@")
         local = parts[0] if len(parts) == 2 else email
         domain = parts[1] if len(parts) == 2 else ""
-        e = EmailEntity(value=email.lower(), local_part=local, domain=domain, sources=[source], **kwargs)
+        e = EmailEntity(value=email.lower(), local_part=local, domain=domain, **kwargs)
+        e.add_provenance(source)
         return self.add_entity(e)
 
     def add_cloud_asset(self, asset_value: str, provider: str, service: str, source: str, **kwargs: Any) -> str:
         e = CloudAssetEntity(
-            value=asset_value, provider=provider, service_type=service,
-            sources=[source], **kwargs
+            value=asset_value, provider=provider, service_type=service, **kwargs
         )
+        e.add_provenance(source)
         return self.add_entity(e)
 
     def add_repository(self, full_name: str, platform: str, source: str, **kwargs: Any) -> str:
@@ -440,24 +503,29 @@ class EntityGraph:
         repo_name = parts[-1]
         e = RepositoryEntity(
             value=full_name, platform=platform, full_name=full_name,
-            org=org, repo_name=repo_name, sources=[source], **kwargs
+            org=org, repo_name=repo_name, **kwargs
         )
+        e.add_provenance(source)
         return self.add_entity(e)
 
     def add_secret(self, identifier: str, secret_type: str, source: str, **kwargs: Any) -> str:
-        e = SecretEntity(value=identifier, secret_type=secret_type, sources=[source], **kwargs)
+        e = SecretEntity(value=identifier, secret_type=secret_type, **kwargs)
+        e.add_provenance(source)
         return self.add_entity(e)
 
     def add_technology(self, product: str, source: str, **kwargs: Any) -> str:
-        e = TechnologyEntity(value=product, product=product, sources=[source], **kwargs)
+        e = TechnologyEntity(value=product, product=product, **kwargs)
+        e.add_provenance(source)
         return self.add_entity(e)
 
     def add_cve(self, cve_id: str, source: str, **kwargs: Any) -> str:
-        e = CVEEntity(value=cve_id, cve_id=cve_id, sources=[source], **kwargs)
+        e = CVEEntity(value=cve_id, cve_id=cve_id, **kwargs)
+        e.add_provenance(source)
         return self.add_entity(e)
 
     def add_person(self, name: str, source: str, **kwargs: Any) -> str:
-        e = PersonEntity(value=name, full_name=name, sources=[source], **kwargs)
+        e = PersonEntity(value=name, full_name=name, **kwargs)
+        e.add_provenance(source)
         return self.add_entity(e)
 
     # ── Reasoning artifacts (Step 0.0) ────────────────────────────────────────
@@ -483,9 +551,9 @@ class EntityGraph:
             statement=statement,
             cites=list(cites or []),
             confidence=confidence,
-            sources=[source],
             generated_by=generated_by,
         )
+        e.add_provenance(source)
         hid = self.add_entity(e)
         for cited_id in cites or []:
             if cited_id in self.graph:
@@ -511,8 +579,8 @@ class EntityGraph:
             confidence=confidence,
             severity=severity,
             recommended_action=recommended_action,
-            sources=[source],
         )
+        e.add_provenance(source)
         lid = self.add_entity(e)
         for cited_id in cites or []:
             if cited_id in self.graph:
@@ -537,8 +605,8 @@ class EntityGraph:
             blocks=list(blocks or []),
             suggested_tools=list(suggested_tools or []),
             confidence=confidence,
-            sources=[source],
         )
+        e.add_provenance(source)
         qid = self.add_entity(e)
         for blocked_id in blocks or []:
             if blocked_id in self.graph:
@@ -1129,6 +1197,9 @@ class EntityGraph:
             Historically ``from_state`` kept only ``sources[0]``, which
             collapsed multi-collector corroboration to a single label and
             made Continuous Confidence corroboration a no-op after resume.
+
+            Also accepts singular ``source`` (phase2 email writers) so the
+            real collector name is not replaced by the phase default.
             """
             if not isinstance(info, dict):
                 return [default]
@@ -1138,6 +1209,9 @@ class EntityGraph:
                 return out or [default]
             if isinstance(raw, str) and raw:
                 return [raw]
+            singular = info.get("source")
+            if isinstance(singular, str) and singular:
+                return [singular]
             return [default]
 
         # Subdomains: each key in subdomain_intel is a subdomain;
