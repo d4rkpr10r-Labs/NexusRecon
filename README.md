@@ -494,9 +494,10 @@ What's stable on the default path:
 
 What's demoted / experimental (in-tree; not default-run product):
 
-- Strategy framing beyond the real dispatch loop — criteria,
-  budgets, simulation abort, and approval resolver are largely
-  unread (ROADMAP demotion)
+- Strategy framing beyond the real dispatch loop — planner no
+  longer authors unread kill/success criteria (NEX-15); only
+  dispatch policy + `vision_calls` budget are enforced; simulation
+  abort / approval resolver remain demoted
 - Recon Packs marketplace + Contribution SDK — empty marketplace
   URL; first-party pack not on default load path
 - Watch Mode — snapshot-diff of frozen `state.json`, not live

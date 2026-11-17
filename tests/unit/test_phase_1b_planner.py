@@ -152,9 +152,13 @@ class TestPlanCampaignSuccess:
         assert "acme.io" in prompt
         assert "deep" in prompt
         assert "15.25" in prompt
-        # Strict-JSON contract surfaced to the planner.
-        assert "success_criteria" in prompt
-        assert "kill_criteria" in prompt
+        # NEX-15: criteria demoted — prompt must not ask the LLM
+        # to author unread success/kill criteria (F-008).
+        assert "Do NOT author `success_criteria`" in prompt
+        assert "not enforced" in prompt
+        assert '"success_criteria"' not in prompt
+        assert '"kill_criteria"' not in prompt
+        assert "dispatch_policy_name" in prompt
 
     @pytest.mark.asyncio
     async def test_parses_plain_json_without_code_fence(self):
