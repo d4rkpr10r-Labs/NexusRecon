@@ -1235,8 +1235,12 @@ def tui() -> None:
 
 packs_app = typer.Typer(
     help=(
-        "Manage recon packs — community-authored bundles of "
-        "tools, agents, dispatch policies, and report templates."
+        "Experimental recon packs (not a stable 1.0 marketplace): "
+        "load operator-installed bundles of tools, agents, "
+        "dispatch policies, and report templates from "
+        "~/.nexusrecon/packs. First-party packs/burp is "
+        "checkout dogfood only — not shipped in the wheel "
+        "(NEX-17)."
     ),
 )
 app.add_typer(packs_app, name="packs")
@@ -1259,8 +1263,12 @@ def packs_list(
     if not candidates:
         console.print(
             "[yellow]No packs found.[/yellow] "
-            "Drop a pack directory into "
-            "[cyan]~/.nexusrecon/packs/[/cyan] and re-run."
+            "Install into [cyan]~/.nexusrecon/packs/[/cyan] "
+            "(or pass --pack-dir).\n"
+            "[dim]Note:[/dim] in-tree [cyan]packs/burp[/cyan] is "
+            "checkout dogfood only — not on the default load path "
+            "and not included in the wheel. Symlink it into "
+            "~/.nexusrecon/packs to try it."
         )
         return
 

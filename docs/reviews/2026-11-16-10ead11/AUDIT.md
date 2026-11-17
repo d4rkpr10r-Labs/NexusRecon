@@ -82,7 +82,7 @@ Default campaign tooling, graph merge, reporting, and unit/integration suites ar
 - **Severity:** Medium (handoff incomplete when installed)
 - **Evidence:** Pre-repair wheel lacked `nexusrecon-verify.py`.
 - **Fix:** Applied — `nexusrecon/assets/nexusrecon-verify.py` + package-data; unit test. Console entry `nexusrecon-verify` (NEX-16) runs/extracts the asset via `nexusrecon.cli.verify_entry`.
-- **Residual:** First-party `packs/burp` still not in wheel (demoted packs).
+- **Residual:** First-party `packs/burp` intentionally excluded from wheel (NEX-17 decision: checkout dogfood; packs not advertised as stable).
 
 ### F-010 — Docs maturity overclaim
 - **Severity:** Medium
@@ -130,7 +130,7 @@ Default campaign tooling, graph merge, reporting, and unit/integration suites ar
 | 7 | FIXED (proxy clear) |
 | 8 | CLOSED as intentional dormancy |
 | 9 | DOCUMENTED (NEX-14 snapshot-diff relabel); re-collect still open |
-| 10 | PARTIAL — verifier packaged; burp pack deferred |
+| 10 | PARTIAL → verifier packaged + console entry (NEX-16); burp pack excluded by decision (NEX-17) |
 
 Architecture deep-dive (sibling): `/cursor/stores/bc-5320a189-5267-455a-b4f4-deb5bdee1a88/internal/nexusrecon-architecture-leads.md`
 

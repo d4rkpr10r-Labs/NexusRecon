@@ -149,6 +149,9 @@ where = ["."]
 include = ["nexusrecon*"]
 
 [tool.setuptools.package-data]
+# Intentionally excludes repo-root packs/ (e.g. packs/burp): that
+# tree is checkout dogfood only — not on ~/.nexusrecon/packs and
+# not advertised as a stable shipped pack (NEX-17 / P3.12).
 "nexusrecon" = [
     "reports/templates/*.j2",
     "py.typed",

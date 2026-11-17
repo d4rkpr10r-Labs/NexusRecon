@@ -991,11 +991,16 @@ repo. There was no community contribution surface.
   - `nexusrecon policy new`. Interactive picker for eligible
     phases + caps, generates a `DispatchPolicy` subclass.
 
-### First-party reference pack
+### First-party reference pack (checkout dogfood only)
 
-`packs/burp/` ships an in-tree pack as a dogfooding example.
-Loads via the same `load_packs()` path community packs use.
-Provides:
+**Decision (NEX-17 / P3.12):** do **not** ship `packs/burp` in the
+wheel and do **not** auto-load it. It remains a repo-root dogfood
+example for an editable checkout (symlink into
+`~/.nexusrecon/packs` or `nexusrecon packs list --pack-dir ./packs`).
+Advertising an in-wheel “stable” pack was rejected while the
+marketplace is empty.
+
+Provides (when manually loaded):
 
 - `BurpXmlImporter` tool (Burp Suite site map XML → entities,
   dedup by (host, port, path), tolerant of malformed items).

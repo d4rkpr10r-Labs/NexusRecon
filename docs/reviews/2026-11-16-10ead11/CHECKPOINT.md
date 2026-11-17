@@ -46,3 +46,4 @@ Incorporated [Map architecture & leads](bc-bbed39bb-848c-5200-8b2c-e20f1e027759)
 4. Watch re-collect slice or permanent relabel (P2.9) — honesty relabel done (NEX-14); re-collect deferred.
 5. TUI true resume (F-013) — done (NEX-12).
 6. Strategy criteria demotion (F-008) — done (NEX-15); enforcement deferred.
+7. Packs/burp load-path decision — exclude from wheel + honesty (NEX-17).
