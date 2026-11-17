@@ -2041,7 +2041,8 @@ import_app = typer.Typer(
     help=(
         "Ingest third-party tool output into a campaign's "
         "Living Graph. Supports STIX 2.1 bundles, Nessus "
-        "XML, Nuclei JSON-lines, and generic CSV."
+        "XML, Nuclei JSON-lines, generic CSV, BBOT NDJSON, "
+        "and Amass enum JSON."
     ),
 )
 app.add_typer(import_app, name="ingest")
@@ -2184,6 +2185,42 @@ def ingest_csv(
             "confidence_column": confidence_column,
         },
     )
+    _persist_graph_to_state_path(state_path, graph, data)
+    _print_import_report(report)
+
+
+@import_app.command("bbot")
+def ingest_bbot(
+    campaign_id: str = typer.Argument(...),
+    path: str = typer.Argument(
+        ...,
+        help="Path to BBOT NDJSON / JSON array (DNS_NAME + IP_ADDRESS events).",
+    ),
+) -> None:
+    """Import a BBOT scan export into a campaign's Living Graph."""
+    from nexusrecon.ingest import BBOTImporter
+
+    state_path = _resolve_campaign_state_path(campaign_id)
+    graph, data = _rebuild_graph_from_state_path(state_path)
+    report = BBOTImporter().import_file(path, graph)
+    _persist_graph_to_state_path(state_path, graph, data)
+    _print_import_report(report)
+
+
+@import_app.command("amass")
+def ingest_amass(
+    campaign_id: str = typer.Argument(...),
+    path: str = typer.Argument(
+        ...,
+        help="Path to Amass enum JSONL / JSON array (-json output).",
+    ),
+) -> None:
+    """Import an Amass enum export into a campaign's Living Graph."""
+    from nexusrecon.ingest import AmassImporter
+
+    state_path = _resolve_campaign_state_path(campaign_id)
+    graph, data = _rebuild_graph_from_state_path(state_path)
+    report = AmassImporter().import_file(path, graph)
     _persist_graph_to_state_path(state_path, graph, data)
     _print_import_report(report)
 

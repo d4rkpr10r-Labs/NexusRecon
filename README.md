@@ -61,7 +61,8 @@ ROADMAP “Demoted out of the 1.0 story”):
 3. **Cryptographically signed handoff**: STIX 2.1 bundle export +
    Ed25519 signed receipts + a packaged standalone verifier for
    downstream consumers. Bidirectional import from Nessus, Nuclei,
-   generic CSV, and STIX is available as post-run CLI.
+   generic CSV, STIX, BBOT NDJSON, and Amass enum JSON is available
+   as post-run CLI.
 
 **In-tree but demoted / experimental (not default-run product):**
 `Strategy` criteria/budgets/simulation/approval queue (planner +
@@ -248,6 +249,8 @@ nexusrecon watch tick acme-watch        # one pass; cron-friendly
 nexusrecon ingest stix   <campaign-id> partner-bundle.json
 nexusrecon ingest nessus <campaign-id> scan-report.nessus
 nexusrecon ingest nuclei <campaign-id> nuclei-output.jsonl
+nexusrecon ingest bbot   <campaign-id> bbot-output.ndjson
+nexusrecon ingest amass  <campaign-id> amass-enum.jsonl
 
 # Author a new agent / tool / dispatch policy
 nexusrecon agent new
@@ -320,7 +323,7 @@ refresh `verification_health` / `weak_links`. See ARCHITECTURE.md section 14.
 |------------|---------|--------------|
 | **STIX 2.1 export** | `nexusrecon export … --format stix2` | EntityGraph → STIX Bundle. Stdlib-only serializer. Identity / Vulnerability / Infrastructure / Note SDOs; Domain / IP / Email / URL SCOs (spec-correct observable types). |
 | **Signed bundles** | `nexusrecon sign / verify` + `nexusrecon-verify` | Ed25519, passphrase-encrypted PEM keys. Console entry `nexusrecon-verify` runs/extracts the packaged cryptography-only asset (also at `scripts/nexusrecon-verify.py`). |
-| **Bidirectional import** | `nexusrecon ingest stix/nessus/nuclei/csv` | Folds partner STIX bundles, Nessus XML, Nuclei JSON-lines, and generic CSV asset inventories into the campaign graph. |
+| **Bidirectional import** | `nexusrecon ingest stix/nessus/nuclei/csv/bbot/amass` | Folds partner STIX, Nessus, Nuclei, CSV, BBOT NDJSON, and Amass enum JSON into the campaign graph (with provenance). |
 | **Downstream emitters** | `--format jira / nuclei-targets / cobaltstrike-profile` | Jira REST NDJSON, Nuclei `-list` targets, Cobalt Strike Malleable C2 profile stub (with explicit "review before deploying" warning). |
 | **Watch mode** _(snapshot-diff)_ | `nexusrecon watch` | Fingerprints frozen `state.json` via Entity/Scope/Timed sensors. Digests change only after a new campaign run. Tiered actions: low→alert, medium→notification, high→queued micro-campaign. Not live re-collection (F-006). |
 | **Vision pipeline** | `nexusrecon vision scan` | Screenshots / PDFs / logos / QR codes → entities + narrative hypothesis. Multi-provider via langchain. Strategy-driven cost cap (`tool_budgets["vision_calls"]`). |

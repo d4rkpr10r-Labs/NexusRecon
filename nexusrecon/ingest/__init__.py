@@ -26,6 +26,9 @@ What ships
 - :class:`CSVImporter` — generic CSV ingester with a
   declarative ``column_mapping`` so operators handle CMDB
   exports + spreadsheets without writing code.
+- :class:`BBOTImporter` / :class:`AmassImporter` — map
+  external BBOT / Amass JSON exports into the Living Graph
+  with provenance (NEX-21); do not reimplement recursive DNS.
 
 Design tenets
 - **Provenance first.** Every imported entity gets sources
@@ -40,6 +43,8 @@ Design tenets
   entity / relationship types. The Pack format (Phase 3 PR
   A) is the supported extension surface.
 """
+from nexusrecon.ingest.amass import AmassImporter
+from nexusrecon.ingest.bbot import BBOTImporter
 from nexusrecon.ingest.csv_ import CSVImporter
 from nexusrecon.ingest.nessus import NessusImporter
 from nexusrecon.ingest.nuclei import NucleiImporter
@@ -47,6 +52,8 @@ from nexusrecon.ingest.stix_in import STIXBundleImporter
 from nexusrecon.ingest.types import ImportReport, ImportResult
 
 __all__ = [
+    "AmassImporter",
+    "BBOTImporter",
     "CSVImporter",
     "ImportReport",
     "ImportResult",
