@@ -782,6 +782,17 @@ run unsandboxed per the locked-in trust model).
 
 ## 15. Strategic Reasoning Engine (Phase 1)
 
+**Status (honesty / ROADMAP demotion):** Keep the **dispatch loop**
+(`reflection_node` + dynamic dispatcher + lite/full/off policies) —
+that path is real on a default run. Demote the rest of the Strategy
+framing as product: pre-flight simulation often estimates `$0.00`
+when tools lack `cost_per_run_usd` and does not enforce abort by
+default; `kill_criteria` / `success_criteria` / `tool_budgets` are
+authored into `Strategy` objects but **not enforced** on the run
+path; the bounded-agency approval queue has **no production
+resolver**. Treat criteria/simulation/approvals as roadmap, not a
+shipped control plane.
+
 **Problem.** Phase selection, dispatch policy, and follow-up
 budgets were hardcoded in `nodes.py`. The dispatcher's caps
 (`MAX_PER_CYCLE=5`, `MAX_TOTAL=30`) were module-level constants.
@@ -789,7 +800,7 @@ Adding a new dispatch posture meant editing the dispatcher itself;
 auditing "why did we pick this strategy" required reading the
 code.
 
-**What landed.** `nexusrecon/strategy/` is the home of the
+**What landed (code).** `nexusrecon/strategy/` is the home of the
 strategic engine.
 
 - **`Strategy` dataclass.** Declarative campaign plan: `name`,
@@ -896,12 +907,20 @@ all surfaces, the tab is mechanical follow-up).
 
 ## 17. Recon Pack format + Contribution SDK (Phase 3)
 
+**Status (honesty / ROADMAP demotion):** Pack loader + SDK
+scaffolders are in-tree, but the marketplace URL is empty, there
+is no curated index, and the first-party `packs/burp` tree is
+**not** on the default load path (`~/.nexusrecon/packs`). SDK
+scaffolders wire guardrail modules that have **zero production
+callers** in the real executor. Do not advertise packs as a
+stable 1.0 community platform until those gaps close.
+
 **Problem.** Adding a new tool was straightforward (subclass
 `OSINTTool`, decorate with `@register_tool`). Adding a new
 agent, dispatch policy, or report template required forking the
 repo. There was no community contribution surface.
 
-**What landed.** Two packages.
+**What landed (code).** Two packages.
 
 ### Pack format (`nexusrecon/packs/`)
 
@@ -987,13 +1006,22 @@ Provides:
 
 ## 18. Watch Mode (Phase 5 PR A)
 
+**Status (honesty / ROADMAP demotion):** As shipped, `tick` loads
+a campaign’s frozen `state.json` via `EntityGraph.from_state` and
+fingerprints that snapshot. Without re-collection, this cannot
+observe live attack-surface drift — treat Watch as **snapshot
+diff** / parked continuous monitoring, not a live sensor mesh.
+Micro-campaigns are queued only (no auto-exec), which is
+intentional.
+
 **Problem.** A campaign is a single run. Real engagements need a
 continuous posture. Alert me when a new subdomain appears, when
 an existing finding's confidence shifts materially, when a new
 vuln-source entity lands.
 
-**What landed.** `nexusrecon/watch/` provides sensors + severity
-classifier + tiered action policy + per-watch persistence.
+**What landed (code).** `nexusrecon/watch/` provides sensors +
+severity classifier + tiered action policy + per-watch
+persistence.
 
 - **Three sensor types.**
   - `EntitySensor`. Watches one entity by id. Fingerprint hashes
@@ -1122,14 +1150,19 @@ scanner on a single text file or stdin.
 
 ## 21. Vision Pipeline (Phase 5 PR D)
 
+**Status (honesty / ROADMAP demotion):** Standalone CLI utility.
+Default `vision_calls` budget is **0** (opt-in spend), and a
+default campaign does not produce the artifacts Vision consumes.
+Keep available; do not pitch as an autonomous campaign loop.
+
 **Problem.** Campaigns routinely involve visual artifacts , 
 screenshots of login portals + dashboards + slide decks, leaked
 PDFs, brand logos, QR codes embedded in posters. Today none of
 those flowed into the graph.
 
-**What landed.** `nexusrecon/vision/` ships a backend protocol +
-default langchain-driven implementation, image / PDF / QR
-preprocessing helpers, a cost gate keyed to the Phase 1
+**What landed (code).** `nexusrecon/vision/` ships a backend
+protocol + default langchain-driven implementation, image / PDF /
+QR preprocessing helpers, a cost gate keyed to the Phase 1
 Strategy's `tool_budgets["vision_calls"]`, and the extractor
 that orchestrates the whole pipeline.
 
