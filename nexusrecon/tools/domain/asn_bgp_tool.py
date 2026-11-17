@@ -7,8 +7,9 @@ from typing import Any
 
 import httpx
 
-from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult
+from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult, make_http_client
 from nexusrecon.tools.registry import register_tool
+from nexusrecon.opsec.context import proxy_kwargs
 
 
 @register_tool
@@ -39,7 +40,9 @@ class ASNBGPTool(OSINTTool):
                             error=f"DNS resolution failed for domain {target!r}: {dns_err}",
                         )
 
-            client = httpx.AsyncClient(base_url="https://api.bgpview.io", timeout=10.0)
+            client = make_http_client(base_url="https://api.bgpview.io", timeout=10.0,
+                **proxy_kwargs()
+            )
             results: dict[str, Any] = {}
 
             if is_asn:

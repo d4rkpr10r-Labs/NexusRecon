@@ -6,8 +6,9 @@ from typing import Any
 import httpx
 
 from nexusrecon.opsec.useragent import random_ua
-from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult
+from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult, make_http_client
 from nexusrecon.tools.registry import register_tool
+from nexusrecon.opsec.context import proxy_kwargs
 
 
 @register_tool
@@ -37,10 +38,11 @@ class LeakIXTool(OSINTTool):
         query = f"host:{target}" if target_type == "ip" else f"domain:{target}"
 
         try:
-            async with httpx.AsyncClient(
+            async with make_http_client(
                 base_url="https://leakix.net",
                 headers=headers,
                 timeout=20.0,
+                **proxy_kwargs()
             ) as client:
                 resp = await client.get(
                     "/api/search",

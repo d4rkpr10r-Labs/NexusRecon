@@ -8,8 +8,9 @@ from typing import Any
 import httpx
 
 from nexusrecon.opsec.useragent import random_ua
-from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult
+from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult, make_http_client
 from nexusrecon.tools.registry import register_tool
+from nexusrecon.opsec.context import proxy_kwargs
 
 _POSTS_URL = "https://raw.githubusercontent.com/joshhighet/ransomwatch/main/posts.json"
 _HEADERS = {
@@ -47,7 +48,9 @@ class RansomwatchTool(OSINTTool):
         search_terms = [domain_lower] + variants
 
         try:
-            async with httpx.AsyncClient(headers=_HEADERS, timeout=30.0, follow_redirects=True) as client:
+            async with make_http_client(headers=_HEADERS, timeout=30.0, follow_redirects=True,
+                **proxy_kwargs()
+            ) as client:
                 resp = await client.get(_POSTS_URL)
                 if resp.status_code != 200:
                     return ToolResult(

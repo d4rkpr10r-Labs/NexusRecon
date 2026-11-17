@@ -6,8 +6,9 @@ from typing import Any
 
 import httpx
 
-from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult
+from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult, make_http_client
 from nexusrecon.tools.registry import register_tool
+from nexusrecon.opsec.context import proxy_kwargs
 
 
 @register_tool
@@ -54,13 +55,14 @@ class BreachTool(OSINTTool):
             return {"error": "HIBP API key not set"}
 
         try:
-            client = httpx.AsyncClient(
+            client = make_http_client(
                 base_url="https://haveibeenpwned.com/api/v3",
                 headers={
                     "hibp-api-key": key,
                     "User-Agent": "NexusRecon/1.0",
                 },
                 timeout=15.0,
+                **proxy_kwargs()
             )
 
             if target_type == "email":
@@ -98,10 +100,11 @@ class BreachTool(OSINTTool):
         """Query DeHashed API for breach data."""
         try:
             auth_str = base64.b64encode(f"{username}:{api_key}".encode()).decode()
-            async with httpx.AsyncClient(
+            async with make_http_client(
                 base_url="https://api.dehashed.com",
                 headers={"Accept": "application/json", "Authorization": f"Basic {auth_str}"},
                 timeout=15.0,
+                **proxy_kwargs()
             ) as client:
                 query_field = "email" if target_type == "email" else "domain"
                 resp = await client.get("/search", params={"query": f"{query_field}:{target}", "size": 100})
@@ -133,10 +136,11 @@ class BreachTool(OSINTTool):
         try:
             selectors = {"email": "email", "domain": "domain", "phone": "phone", "username": "username"}
             selector = selectors.get(target_type, "email")
-            async with httpx.AsyncClient(
+            async with make_http_client(
                 base_url="https://2.intelx.io",
                 headers={"x-key": api_key, "Accept": "application/json", "User-Agent": "NexusRecon/1.0"},
                 timeout=20.0,
+                **proxy_kwargs()
             ) as client:
                 resp = await client.get("/phonebook/search", params={"selector": target, "type": selector, "maxresults": 100})
                 if resp.status_code == 200:

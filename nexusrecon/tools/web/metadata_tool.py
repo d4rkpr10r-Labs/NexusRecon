@@ -7,8 +7,9 @@ from typing import Any
 import httpx
 
 from nexusrecon.opsec.useragent import random_ua
-from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult
+from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult, make_http_client
 from nexusrecon.tools.registry import register_tool
+from nexusrecon.opsec.context import proxy_kwargs
 
 USER_AGENT = random_ua()
 
@@ -75,7 +76,9 @@ class MetadataTool(OSINTTool):
         env_leaks: list[str] = []
         sensitive_findings: list[str] = []
 
-        async with httpx.AsyncClient(timeout=10.0, follow_redirects=True, verify=False) as client:
+        async with make_http_client(timeout=10.0, follow_redirects=True, verify=False,
+                **proxy_kwargs()
+            ) as client:
             # Scan common sensitive paths
             for path in COMMON_DOC_PATHS:
                 url = f"{base_url}{path}"

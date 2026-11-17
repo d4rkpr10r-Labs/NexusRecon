@@ -14,8 +14,9 @@ from typing import Any
 
 import httpx
 
-from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult
+from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult, make_http_client
 from nexusrecon.tools.registry import register_tool
+from nexusrecon.opsec.context import proxy_kwargs
 
 GCS_PERMUTATIONS = [
     "{name}", "{name}-data", "{name}-storage", "{name}-bucket",
@@ -42,7 +43,9 @@ class GCPReconTool(OSINTTool):
 
     async def _get_client(self) -> httpx.AsyncClient:
         if self._http is None:
-            self._http = httpx.AsyncClient(timeout=5.0, http2=True)
+            self._http = make_http_client(timeout=5.0, http2=True,
+                **proxy_kwargs()
+            )
         return self._http
 
     async def run(self, target: str, **kwargs: Any) -> ToolResult:

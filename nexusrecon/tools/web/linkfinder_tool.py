@@ -8,8 +8,9 @@ from urllib.parse import urljoin, urlparse
 import httpx
 
 from nexusrecon.opsec.useragent import random_ua
-from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult
+from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult, make_http_client
 from nexusrecon.tools.registry import register_tool
+from nexusrecon.opsec.context import proxy_kwargs
 
 # Endpoint patterns extracted from JS source
 _ENDPOINT_PATTERNS = [
@@ -44,10 +45,11 @@ class LinkFinderTool(OSINTTool):
         }
 
         try:
-            async with httpx.AsyncClient(
+            async with make_http_client(
                 headers=headers,
                 timeout=15.0,
                 follow_redirects=True,
+                **proxy_kwargs()
             ) as client:
                 # Step 1: fetch main page and find script tags
                 page_resp = await client.get(base_url)

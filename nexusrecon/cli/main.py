@@ -298,17 +298,17 @@ def run(
     # registry. Binding the stealth profile / rate limiter / proxy manager
     # is what makes the scope's stealth_profile and NEXUS_PROXY_URL actually
     # take effect on the wire (without this they were config-time fiction).
-    from nexusrecon.opsec.setup import ProxyRequiredError, build_opsec
+    from nexusrecon.opsec.setup import ProxyRequiredError, bind_campaign_opsec
     from nexusrecon.tools.registry import get_registry
     scope_guard = ScopeGuard(scope_model)
     try:
-        opsec = build_opsec(scope_model, get_config())
+        bind_campaign_opsec(
+            scope_guard, campaign.cache, campaign.audit_log,
+            scope_model, get_config(),
+        )
     except ProxyRequiredError as e:
         console.print(f"[bold red]OPSEC: {e}[/bold red]")
         raise typer.Exit(1)
-    get_registry().set_campaign_context(
-        scope_guard, campaign.cache, campaign.audit_log, **opsec
-    )
 
     if dry_run:
         console.print("[bold green]Dry run — scope is valid, campaign ready.[/bold green]")
@@ -717,7 +717,7 @@ def resume(campaign_id: str = typer.Argument(..., help="Campaign ID to resume"))
             raise typer.Exit(1)
 
     from nexusrecon.core.campaign_runner import run_campaign
-    from nexusrecon.opsec.setup import ProxyRequiredError, build_opsec
+    from nexusrecon.opsec.setup import ProxyRequiredError, bind_campaign_opsec
     from nexusrecon.tools.registry import get_registry
 
     mode_raw = str(state_data.get("mode") or "medium").lower()
@@ -745,13 +745,13 @@ def resume(campaign_id: str = typer.Argument(..., help="Campaign ID to resume"))
 
     scope_guard = ScopeGuard(scope_model)
     try:
-        opsec = build_opsec(scope_model, get_config())
+        bind_campaign_opsec(
+            scope_guard, campaign.cache, campaign.audit_log,
+            scope_model, get_config(),
+        )
     except ProxyRequiredError as e:
         console.print(f"[bold red]OPSEC: {e}[/bold red]")
         raise typer.Exit(1)
-    get_registry().set_campaign_context(
-        scope_guard, campaign.cache, campaign.audit_log, **opsec
-    )
 
     console.print("\n[bold green]Continuing campaign execution via shared runner...[/bold green]")
 

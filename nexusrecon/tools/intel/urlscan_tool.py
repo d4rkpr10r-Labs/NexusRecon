@@ -5,8 +5,9 @@ from typing import Any
 
 import httpx
 
-from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult
+from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult, make_http_client
 from nexusrecon.tools.registry import register_tool
+from nexusrecon.opsec.context import proxy_kwargs
 
 
 @register_tool
@@ -27,10 +28,11 @@ class URLScanTool(OSINTTool):
             if key:
                 headers["API-Key"] = key
 
-            client = httpx.AsyncClient(
+            client = make_http_client(
                 base_url="https://urlscan.io/api/v1",
                 headers=headers,
                 timeout=15.0,
+                **proxy_kwargs()
             )
 
             # Search scans for domain

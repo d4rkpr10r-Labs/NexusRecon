@@ -6,8 +6,9 @@ from typing import Any
 import httpx
 
 from nexusrecon.opsec.useragent import random_ua
-from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult
+from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult, make_http_client
 from nexusrecon.tools.registry import register_tool
+from nexusrecon.opsec.context import proxy_kwargs
 
 
 @register_tool
@@ -27,7 +28,7 @@ class BinaryEdgeTool(OSINTTool):
         target_type = kwargs.get("target_type", "domain")
 
         try:
-            async with httpx.AsyncClient(
+            async with make_http_client(
                 base_url="https://api.binaryedge.io/v2",
                 headers={
                     "X-Key": key,
@@ -35,6 +36,7 @@ class BinaryEdgeTool(OSINTTool):
                     "User-Agent": random_ua(),
                 },
                 timeout=20.0,
+                **proxy_kwargs()
             ) as client:
                 if target_type == "ip":
                     resp = await client.get(f"/query/ip/{target}")

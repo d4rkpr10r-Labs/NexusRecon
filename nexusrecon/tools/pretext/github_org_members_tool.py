@@ -7,8 +7,9 @@ from typing import Any
 import httpx
 
 from nexusrecon.opsec.useragent import random_ua
-from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult
+from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult, make_http_client
 from nexusrecon.tools.registry import register_tool
+from nexusrecon.opsec.context import proxy_kwargs
 
 
 @register_tool
@@ -34,10 +35,11 @@ class GitHubOrgMembersTool(OSINTTool):
         }
 
         try:
-            async with httpx.AsyncClient(
+            async with make_http_client(
                 base_url="https://api.github.com",
                 headers=headers,
                 timeout=20.0,
+                **proxy_kwargs()
             ) as client:
                 # If target is a domain, first find the org handle
                 org_names: list[str] = []

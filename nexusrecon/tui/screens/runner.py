@@ -473,11 +473,11 @@ class RunnerScreen(Screen):
         # the wire. ProxyRequiredError propagates to the worker's FATAL
         # handler when require_proxy is set without a configured proxy.
         from nexusrecon.core.config import get_config
-        from nexusrecon.opsec.setup import build_opsec
+        from nexusrecon.opsec.setup import bind_campaign_opsec
         scope_guard = ScopeGuard(scope_model)
-        opsec = build_opsec(scope_model, get_config())
-        get_registry().set_campaign_context(
-            scope_guard, campaign.cache, campaign.audit_log, **opsec
+        bind_campaign_opsec(
+            scope_guard, campaign.cache, campaign.audit_log,
+            scope_model, get_config(),
         )
 
         # Preserve a copy of the scope file inside the campaign for audit

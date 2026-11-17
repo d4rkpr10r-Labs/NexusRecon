@@ -70,3 +70,25 @@ def build_opsec(scope_model: Any, config: Any) -> dict[str, Any]:
         "rate_limiter": rate_limiter,
         "proxy_manager": proxy_manager,
     }
+
+
+def bind_campaign_opsec(
+    scope_guard: Any,
+    cache: Any,
+    audit_log: Any,
+    scope_model: Any,
+    config: Any,
+) -> dict[str, Any]:
+    """Build OPSEC kwargs and bind them on the global tool registry.
+
+    Single entry-point helper for CLI ``run`` / ``resume``, the TUI runner,
+    and any future campaign launcher so rate_limiter + proxy_manager cannot
+    silently drop out of a path (NEX-10).
+    """
+    from nexusrecon.tools.registry import get_registry
+
+    opsec = build_opsec(scope_model, config)
+    get_registry().set_campaign_context(
+        scope_guard, cache, audit_log, **opsec
+    )
+    return opsec

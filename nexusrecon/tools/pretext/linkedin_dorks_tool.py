@@ -6,8 +6,9 @@ from typing import Any
 import httpx
 
 from nexusrecon.opsec.useragent import random_ua
-from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult
+from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult, make_http_client
 from nexusrecon.tools.registry import register_tool
+from nexusrecon.opsec.context import proxy_kwargs
 
 # Dork templates that surface LinkedIn profiles for a company
 _DORK_TEMPLATES = [
@@ -41,14 +42,15 @@ class LinkedInDorksTool(OSINTTool):
 
         if bing_key:
             try:
-                async with httpx.AsyncClient(
+                async with make_http_client(
                     base_url="https://api.bing.microsoft.com/v7.0",
                     headers={
                         "Ocp-Apim-Subscription-Key": bing_key,
                         "User-Agent": random_ua(),
                     },
                     timeout=15.0,
-                ) as client:
+                **proxy_kwargs()
+            ) as client:
                     for dork in dorks[:4]:
                         resp = await client.get("/search", params={"q": dork, "count": 10})
                         if resp.status_code == 200:

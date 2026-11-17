@@ -14,8 +14,10 @@ from nexusrecon.tools.base import (
     Tier,
     ToolResult,
     http_get_with_retry,
+    make_http_client,
 )
 from nexusrecon.tools.registry import register_tool
+from nexusrecon.opsec.context import proxy_kwargs
 
 _HEADERS = {
     "User-Agent": random_ua(),
@@ -57,7 +59,9 @@ class CertStreamTool(OSINTTool):
         potential_phishing: list[dict[str, Any]] = []
 
         try:
-            async with httpx.AsyncClient(headers=_HEADERS, timeout=30.0, follow_redirects=True) as client:
+            async with make_http_client(headers=_HEADERS, timeout=30.0, follow_redirects=True,
+                **proxy_kwargs()
+            ) as client:
                 # crt.sh flaps with 502s; retry transient failures before
                 # giving up on this load-bearing certificate source.
                 resp = await http_get_with_retry(

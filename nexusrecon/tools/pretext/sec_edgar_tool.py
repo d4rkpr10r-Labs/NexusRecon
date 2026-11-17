@@ -6,8 +6,9 @@ from typing import Any
 
 import httpx
 
-from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult
+from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult, make_http_client
 from nexusrecon.tools.registry import register_tool
+from nexusrecon.opsec.context import proxy_kwargs
 
 EDGAR_SEARCH_URL = "https://efts.sec.gov/LATEST/search-index"
 EDGAR_CIK_LOOKUP = "https://www.sec.gov/cgi-bin/browse-edgar"
@@ -69,7 +70,9 @@ class SECEdgarTool(OSINTTool):
         """Search SEC EDGAR full-text index for filings mentioning the company."""
         results: list[dict[str, Any]] = []
         try:
-            async with httpx.AsyncClient(timeout=15.0) as client:
+            async with make_http_client(timeout=15.0,
+                **proxy_kwargs()
+            ) as client:
                 for filing_type in FILING_TYPES[:3]:
                     resp = await client.get(
                         EDGAR_SEARCH_URL,
@@ -104,7 +107,9 @@ class SECEdgarTool(OSINTTool):
         if not url.startswith("http"):
             url = f"https://www.sec.gov{url}" if url.startswith("/") else url
         try:
-            async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
+            async with make_http_client(timeout=10.0, follow_redirects=True,
+                **proxy_kwargs()
+            ) as client:
                 resp = await client.get(url, headers={
                     "User-Agent": "NexusRecon/1.0 (mailto:research@example.com)",
                 })

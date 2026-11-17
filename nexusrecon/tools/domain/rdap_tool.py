@@ -6,8 +6,9 @@ from typing import Any
 import httpx
 
 from nexusrecon.opsec.useragent import random_ua
-from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult
+from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult, make_http_client
 from nexusrecon.tools.registry import register_tool
+from nexusrecon.opsec.context import proxy_kwargs
 
 
 @register_tool
@@ -23,13 +24,14 @@ class RDAPTool(OSINTTool):
         target_type = kwargs.get("target_type", "domain")
 
         try:
-            async with httpx.AsyncClient(
+            async with make_http_client(
                 headers={
                     "Accept": "application/rdap+json, application/json",
                     "User-Agent": random_ua(),
                 },
                 timeout=15.0,
                 follow_redirects=True,
+                **proxy_kwargs()
             ) as client:
                 url = (
                     f"https://rdap.org/ip/{target}"

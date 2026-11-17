@@ -7,8 +7,9 @@ from typing import Any
 import httpx
 
 from nexusrecon.opsec.useragent import random_ua
-from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult
+from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult, make_http_client
 from nexusrecon.tools.registry import register_tool
+from nexusrecon.opsec.context import proxy_kwargs
 
 _SUFFIXES = [
     "", "-backup", "-backups", "-bak", "-files", "-file", "-data", "-assets",
@@ -70,9 +71,10 @@ class BucketEnumTool(OSINTTool):
             return None
 
         try:
-            async with httpx.AsyncClient(
+            async with make_http_client(
                 timeout=8.0,
                 headers={"User-Agent": random_ua()},
+                **proxy_kwargs()
             ) as client:
                 tasks = []
                 for name in names[:60]:

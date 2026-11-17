@@ -7,8 +7,9 @@ from typing import Any
 import httpx
 
 from nexusrecon.opsec.useragent import random_ua
-from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult
+from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult, make_http_client
 from nexusrecon.tools.registry import register_tool
+from nexusrecon.opsec.context import proxy_kwargs
 
 USER_AGENT = random_ua()
 
@@ -39,7 +40,9 @@ class FaviconTool(OSINTTool):
         results: dict[str, Any] = {}
         icons_found = []
 
-        async with httpx.AsyncClient(timeout=10.0, follow_redirects=True, verify=False) as client:
+        async with make_http_client(timeout=10.0, follow_redirects=True, verify=False,
+                **proxy_kwargs()
+            ) as client:
             for path in COMMON_FAVICON_PATHS:
                 url = f"{base_url}{path}"
                 try:
@@ -64,7 +67,9 @@ class FaviconTool(OSINTTool):
             if shodan_key and icons_found[0].get("mmh3_hash_str"):
                 try:
                     h = icons_found[0]["mmh3_hash_str"]
-                    async with httpx.AsyncClient(timeout=10.0) as client:
+                    async with make_http_client(timeout=10.0,
+                **proxy_kwargs()
+            ) as client:
                         shodan_resp = await client.get(
                             "https://api.shodan.io/shodan/host/search",
                             params={"key": shodan_key, "query": f"http.favicon.hash:{h}"},

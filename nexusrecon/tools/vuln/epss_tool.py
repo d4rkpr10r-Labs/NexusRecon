@@ -5,8 +5,9 @@ from typing import Any
 
 import httpx
 
-from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult
+from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult, make_http_client
 from nexusrecon.tools.registry import register_tool
+from nexusrecon.opsec.context import proxy_kwargs
 
 
 @register_tool
@@ -20,9 +21,10 @@ class EPSSTool(OSINTTool):
 
     async def run(self, target: str, **kwargs: Any) -> ToolResult:
         try:
-            client = httpx.AsyncClient(
+            client = make_http_client(
                 base_url="https://api.first.org/data/v1",
                 timeout=10.0,
+                **proxy_kwargs()
             )
 
             resp = await client.get("/epss", params={"cve": target})

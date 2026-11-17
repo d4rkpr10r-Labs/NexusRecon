@@ -6,8 +6,9 @@ from typing import Any
 import httpx
 
 from nexusrecon.opsec.useragent import random_ua
-from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult
+from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult, make_http_client
 from nexusrecon.tools.registry import register_tool
+from nexusrecon.opsec.context import proxy_kwargs
 
 
 @register_tool
@@ -28,7 +29,7 @@ class ZoomEyeTool(OSINTTool):
         query = f"ip:{target}" if target_type == "ip" else f"hostname:{target}"
 
         try:
-            async with httpx.AsyncClient(
+            async with make_http_client(
                 base_url="https://api.zoomeye.org",
                 headers={
                     "API-KEY": key,
@@ -36,6 +37,7 @@ class ZoomEyeTool(OSINTTool):
                     "User-Agent": random_ua(),
                 },
                 timeout=20.0,
+                **proxy_kwargs()
             ) as client:
                 resp = await client.get(
                     "/host/search",

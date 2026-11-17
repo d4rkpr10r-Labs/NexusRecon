@@ -5,8 +5,9 @@ from typing import Any
 
 import httpx
 
-from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult
+from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult, make_http_client
 from nexusrecon.tools.registry import register_tool
+from nexusrecon.opsec.context import proxy_kwargs
 
 
 @register_tool
@@ -25,8 +26,9 @@ class HunterTool(OSINTTool):
             return ToolResult(success=False, source=self.name, error="HUNTER_API_KEY not set")
 
         try:
-            async with httpx.AsyncClient(
+            async with make_http_client(
                 base_url="https://api.hunter.io/v2", timeout=15.0,
+                **proxy_kwargs()
             ) as client:
                 # Previous revision read ``if resp.status_code == 200``
                 # and silently fell through on auth/rate-limit/server

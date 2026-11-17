@@ -6,8 +6,9 @@ from typing import Any
 import httpx
 
 from nexusrecon.opsec.useragent import random_ua
-from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult
+from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult, make_http_client
 from nexusrecon.tools.registry import register_tool
+from nexusrecon.opsec.context import proxy_kwargs
 
 # Maps target_type values to the query type LeakCheck expects
 _TYPE_MAP = {
@@ -41,7 +42,7 @@ class LeakCheckTool(OSINTTool):
         query_type = _TYPE_MAP.get(target_type, "email")
 
         try:
-            async with httpx.AsyncClient(
+            async with make_http_client(
                 base_url="https://leakcheck.io",
                 headers={
                     "X-API-Key": key,
@@ -49,6 +50,7 @@ class LeakCheckTool(OSINTTool):
                     "User-Agent": random_ua(),
                 },
                 timeout=20.0,
+                **proxy_kwargs()
             ) as client:
                 resp = await client.get(
                     f"/api/v2/query/{target}",

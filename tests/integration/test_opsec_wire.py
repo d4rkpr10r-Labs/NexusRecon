@@ -534,6 +534,27 @@ class TestProxySupportStructural:
             + "\n".join(f"  {name}  ({src})" for name, src in violators)
         )
 
+    def test_make_http_client_call_sites_pass_proxy_kwargs(self):
+        """NEX-10: every tool/core module that builds ``make_http_client``
+        must spread ``proxy_kwargs()`` / ``_proxy_kwargs()`` so campaigns
+        cannot silently bypass the bound proxy manager."""
+        from pathlib import Path
+
+        root = Path(__file__).resolve().parents[2] / "nexusrecon"
+        violators: list[str] = []
+        for path in root.rglob("*.py"):
+            if path.name in {"base.py", "context.py"}:
+                continue
+            src = path.read_text(encoding="utf-8")
+            if "make_http_client(" not in src and "httpx.AsyncClient(" not in src:
+                continue
+            if "proxy_kwargs()" not in src and "_proxy_kwargs()" not in src:
+                violators.append(str(path.relative_to(root.parent)))
+        assert not violators, (
+            "HTTP client call sites missing proxy_kwargs:\n"
+            + "\n".join(f"  {p}" for p in violators)
+        )
+
     def test_every_basehttp_tool_sets_user_agent(self):
         """Mirror of the proxy structural check, for User-Agent.
 
@@ -818,7 +839,11 @@ class TestOpsecManifest:
 
 from types import SimpleNamespace  # noqa: E402
 
-from nexusrecon.opsec.setup import ProxyRequiredError, build_opsec  # noqa: E402
+from nexusrecon.opsec.setup import (  # noqa: E402
+    ProxyRequiredError,
+    bind_campaign_opsec,
+    build_opsec,
+)
 from nexusrecon.tools.base import (  # noqa: E402
     Category,
     OSINTTool,
@@ -888,6 +913,23 @@ class TestProductionOpsecBinding:
         reg.set_campaign_context(scope_guard=None, **opsec)
         asyncio.run(reg.execute("ctx_probe", "example.com"))
         assert _CtxProbe.seen[-1] == {"proxy": "http://proxy.test:3128"}
+
+    def test_bind_campaign_opsec_wires_global_registry(self):
+        from nexusrecon.tools.registry import get_registry
+
+        reg = get_registry()
+        try:
+            bind_campaign_opsec(
+                None, None, None,
+                _fake_scope("high"),
+                _fake_config(proxy_url="http://bound.test:8080"),
+            )
+            assert reg._rate_limiter is not None
+            assert reg._proxy_manager is not None
+            assert reg._proxy_manager.available is True
+            assert reg._stealth_profile is not None
+        finally:
+            reg.clear_campaign_context()
 
 
 # ──────────────────────────────────────────────────────────────────────────
