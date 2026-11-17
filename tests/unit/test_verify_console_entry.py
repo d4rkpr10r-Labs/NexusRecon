@@ -1,7 +1,6 @@
 """NEX-16: nexusrecon-verify console entry extracts/runs packaged asset."""
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 
 import pytest
