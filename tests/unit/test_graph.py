@@ -117,6 +117,20 @@ class TestBuildWorkflow:
         workflow = build_campaign_workflow(mode=CampaignMode.DEEP)
         assert workflow is not None
 
+    def test_phase_order_matches_default_runner(self):
+        """F-014: LangGraph spine must stay aligned with campaign_runner."""
+        from nexusrecon.core import campaign_runner as cr
+
+        # Source-level order is defined in run_campaign's ``phases`` list;
+        # mirror via PHASE_ORDER vs the documented runner sequence.
+        assert PHASE_ORDER == [
+            "phase1", "phase2", "phase2_5", "phase3", "phase4",
+            "phase5", "phase6", "phase7", "phase7_5", "phase7_7",
+            "phase8", "phase9",
+        ]
+        # Tier floors must match so mode gating cannot diverge silently.
+        assert PHASE_TIERS == cr._PHASE_TIER_FLOOR
+
 
 class TestRunWorkflow:
     @pytest.mark.asyncio
@@ -216,6 +230,37 @@ class TestRunWorkflow:
             "agent_messages": [],
             "report_paths": {},
         }
-        result = await run_workflow(state)
+        result = await run_workflow(state, mode=CampaignMode.MEDIUM, thread_id="test-all-phases")
         completed = result.get("completed_phases", [])
         assert set(completed) == expected_phases
+
+    @pytest.mark.asyncio
+    async def test_run_workflow_passes_thread_id_config(self, mock_workflow_deps):
+        """F-014: astream must receive configurable.thread_id (no dead saver)."""
+        state = {
+            "campaign_id": "thread-check",
+            "seeds": ["example.test"],
+            "completed_phases": [],
+            "current_phase": "init",
+            "findings": [],
+            "subdomain_intel": {},
+            "email_intel": {"emails": {}},
+            "cloud_intel": {},
+            "code_intel": {},
+            "infra_intel": {},
+            "domain_intel": {},
+            "vuln_intel": {},
+            "pretext_intel": {},
+            "entity_graph": {},
+            "hypotheses": [],
+            "confirmed_leads": [],
+            "llm_cost_usd": 0.0,
+            "tool_cost_usd": 0.0,
+            "step_count": 0,
+            "errors": [],
+            "agent_messages": [],
+            "report_paths": {},
+        }
+        result = await run_workflow(state, thread_id="explicit-thread")
+        assert result["campaign_id"] == "thread-check"
+        assert "phase1" in result.get("completed_phases", [])

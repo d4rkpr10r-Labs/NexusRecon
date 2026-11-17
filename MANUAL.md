@@ -313,7 +313,7 @@ Options:
   --dry-run                  Validate scope + print a scope summary, then exit
                              (no tools, LLM calls, or planner). Use --plan-only
                              to preview the planner Strategy.
-  --use-graph                Use the LangGraph workflow engine instead of sequential phase runner.
+  --use-graph                Experimental LangGraph engine (same phase set + OPSEC bind). Durable resume still uses state.json / `nexusrecon resume`.
   --dispatch-mode    TEXT    Dynamic dispatch: lite (default) | full | off.
                              See "Dispatch Modes" below.
   --validate-creds           After Phase 7.5, attempt read-only validation of harvested credentials
@@ -364,9 +364,10 @@ nexusrecon run --scope my-scope.yaml --validate-creds --generate-phishing
 nexusrecon run --scope my-scope.yaml --seeds "acme.com" --dry-run
 ```
 
-> `--use-graph` switches to the LangGraph workflow engine (with SQLite
-> checkpointing) instead of the sequential phase runner. Experimental, only
-> use if you specifically need graph-state checkpointing for very long runs.
+> `--use-graph` is an **experimental** alternate engine: it runs the same
+> phase node set and inherits the CLI's registry OPSEC bind, with an
+> in-process MemorySaver + `thread_id`. Durable cross-process resume remains
+> `nexusrecon resume` / `state.json` on the default runner (F-014).
 
 ---
 
@@ -523,7 +524,7 @@ The codebase lives entirely inside `nexusrecon/`. Here is every package and what
 5. Syncs the final state back to the `CampaignManager` Pydantic model
 6. Calls `ReportEngine.generate_all()` then `campaign.finalize()`
 
-The `use_graph` flag switches from the sequential phase runner to the LangGraph `run_workflow()` path, which supports checkpointing and the reflection node.
+The `use_graph` flag switches from the sequential phase runner to the experimental LangGraph `run_workflow()` path (same phase set + reflection node; durable resume remains `state.json`).
 
 ---
 
@@ -617,7 +618,7 @@ A `reflection_node` runs between phases, invoking the dynamic dispatcher when
 
 See `nexusrecon/docs/AGENT_LOOP.md` for the full dispatcher reference.
 
-**`workflow.py`**, `build_campaign_workflow(db_path, mode)` constructs the LangGraph `StateGraph`. Only adds phase nodes within the `mode`'s tier limit. Uses a local routing function `_route_next()` that routes among active phases based on `completed_phases`. `run_workflow()` compiles the graph with a SQLite checkpointer and streams results.
+**`workflow.py`**, `build_campaign_workflow(mode)` constructs the LangGraph `StateGraph`. Only adds phase nodes within the `mode`'s tier limit. Uses a local routing function `_route_next()` that routes among active phases based on `completed_phases`. `run_workflow()` compiles with an in-process MemorySaver + `thread_id` (experimental `--use-graph` path; durable resume is still `state.json`).
 
 **`agent_executor.py`**, `AgentExecutor` bridges the LLM and the phase nodes. `run_agent(agent_name, task_data, task_prompt)` instantiates the named agent class, builds a prompt incorporating the agent's `role`, `goal`, and `backstory`, calls the LLM, and returns the analysis string. Falls back to `MockLLM` if no LLM keys are configured.
 
@@ -1172,7 +1173,9 @@ nexusrecon run \
   --use-graph
 ```
 
-**Expected:** Same output as the sequential runner but using LangGraph's state graph internally. Note the SQLite checkpointer currently runs in-memory (`db_path=":memory:"` from the CLI path), so cross-process mid-run resume is not persisted; use `nexusrecon resume` (checkpoint from `state.json`) for resumption.
+**Expected:** Same phase coverage as the sequential runner via LangGraph.
+Cross-process mid-run resume is not via the graph checkpointer; use
+`nexusrecon resume` (`state.json`) for resumption.
 
 ---
 
