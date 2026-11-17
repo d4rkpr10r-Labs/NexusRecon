@@ -84,7 +84,7 @@ exists actually deliver on its claim.
        genuinely extracted none. Regression guard:
        `tests/unit/test_campaign_runner_phases.py`. Done 2026-06-09.
 
-3. [~] **Close the phase6 deanonymization gap.** Active web-probing
+3. [x] **Close the phase6 deanonymization gap.** Active web-probing
        (`/.git/config`, `/.env`, `/admin`) in `graph/nodes.py` fired raw
        `httpx.AsyncClient` outside `registry.execute()`, bypassing proxy, JA3,
        rate limiter, and jitter simultaneously, on the campaign's most exposed
@@ -313,7 +313,7 @@ Things people sometimes ask for that we will not build. Unchanged.
 
 ---
 
-## Shipped (0.5.x through 0.7.0)
+## Shipped (0.5.x through 0.8.0)
 
 For provenance. The detailed phase-by-phase checklists were removed in the
 2026-06-09 roadmap reset; the capabilities below are in the build and described
@@ -328,8 +328,8 @@ in `ARCHITECTURE.md`.
   provenance guard).
 - Phase D/E identity attribution, credential correlation, relationship graph,
   and pretext scoring (now wired into the default run).
-- OPSEC stack (stealth jitter, rate limiting, proxy injection, opt-in JA3) with
-  the known gaps tracked in items 3.
+- OPSEC stack (stealth jitter, rate limiting, proxy injection, opt-in JA3);
+  phase6 / resume / subprocess proxy gaps closed (item 3, NEX-10).
 - Report engine with about 22 deliverables, Obsidian export, and the signed
   STIX path (happy path fixed in item 7).
 - TUI front door, killer-demo sample run, live-drift CI schedule.

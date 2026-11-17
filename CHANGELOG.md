@@ -5,6 +5,64 @@ All notable changes to NexusRecon land here. Format loosely follows
 follow [SemVer](https://semver.org/) with the pre-1.0 caveat that
 minor bumps (0.x → 0.x+1) may break APIs.
 
+## [0.8.0]: 2026-11-17
+
+Post-consultation release: platform reliability, campaign continuity,
+provenance honesty, and install verification for the assurance stack
+landed on `master` as PRs **#9–#11** and **#13–#26**. Wording below
+describes operational behavior for authorized asset discovery — not
+offensive-security marketing claims.
+
+### Reliability & campaign continuity
+
+- **STIX export hygiene + resume spine + registry isolation** (#9):
+  redacts sensitive fields from STIX bundles; hardens campaign resume
+  checkpoints; isolates tool-registry state across campaigns.
+- **Checkpoint abort-or-warn** (#10): operators can fail fast when
+  checkpoint persistence fails instead of silently continuing.
+- **TUI Resume continues phases** (#17 / NEX-12): Resume uses the
+  shared campaign runner so interrupted phases continue correctly.
+- **OPSEC ContextVar binding** (#15 / NEX-10): campaign OPSEC settings
+  bind via ContextVar; HTTP clients migrated off process-global state.
+- **Per-campaign registry ContextVar** (#16 / NEX-11): tool registry
+  bind is campaign-scoped to prevent cross-run leakage.
+
+### Graph, provenance & verification
+
+- **Multi-source list preservation in `from_state`** (#13 / NEX-8).
+- **`--use-graph` honesty** (#14 / NEX-9): demotes the dead
+  `SqliteSaver` path; flag behavior matches what the code actually does.
+- **Continuous Confidence opt-in** (#18 / NEX-13): wired behind
+  `--verify` / `NEXUS_ENABLE_VERIFY`; off by default.
+- **`nexusrecon-verify` console entry** (#21 / NEX-16): ships the
+  standalone verifier in the wheel for signed-receipt consumers.
+- **Default-path `ProvenanceRecord` stamps** (#24 / NEX-19):
+  per-source provenance on the Living Graph default reconstruction path.
+
+### Install, packaging & docs honesty
+
+- **ROADMAP demotion alignment** (#11): README/ARCHITECTURE match
+  demoted vs default-run product claims.
+- **Watch Mode labeled snapshot-diff** (#19 / NEX-14): permanently
+  documents Watch as frozen-`state.json` diff, not live monitoring.
+- **Planner criteria honesty** (#20 / NEX-15): stops authoring unread
+  kill/success criteria in the planner path.
+- **Packs / burp packaging honesty** (#22 / NEX-17): `packs/burp`
+  excluded from the wheel; stop advertising packs as stable default.
+- **Fresh wheel install CI** (#23 / NEX-18): Linux x86_64 matrix builds
+  a wheel → clean venv → asserts `nexusrecon` + `nexusrecon-verify`
+  console scripts → `scripts/verify_install.sh`. See
+  [`docs/install-verification.md`](docs/install-verification.md).
+  arm64 and `pipx` from PyPI remain maintainer-manual; no publish
+  workflow in-tree yet.
+
+### Asset discovery ingest & benchmarks
+
+- **Replayable fixture metrics harness** (#25 / NEX-20).
+- **BBOT NDJSON + Amass enum JSON graph adapters** (#26 / NEX-21):
+  post-run ingest into the Living Graph for authorized discovery
+  workflows.
+
 ## [0.7.0]: 2026-05-27
 
 **Test suite: 590/590 passing.** This release executes the four core

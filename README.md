@@ -5,7 +5,7 @@
   ██║╚██╗██║██╔══╝   ██╔██╗ ██║   ██║╚════██║
   ██║ ╚████║███████╗██╔╝ ██╗╚██████╔╝███████║
   ╚═╝  ╚═══╝╚══════╝╚═╝  ╚═╝ ╚═════╝ ╚══════╝
-           R E C O N   v 0 . 7 . 0
+           R E C O N   v 0 . 8 . 0
 ```
 
 # NexusRecon
@@ -13,7 +13,7 @@
 **Agentic OSINT orchestration framework for authorized red-team reconnaissance.**
 
 [![status](https://img.shields.io/badge/status-beta-yellow)](#status)
-[![version](https://img.shields.io/badge/version-0.7.0-blue)](nexusrecon/__init__.py)
+[![version](https://img.shields.io/badge/version-0.8.0-blue)](nexusrecon/__init__.py)
 [![python](https://img.shields.io/badge/python-3.11--3.13-blue)](pyproject.toml)
 [![engine](https://img.shields.io/badge/engine-agentic-purple)](#why-agentic-osint)
 [![license](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
@@ -164,12 +164,24 @@ adversarial defense, vision pipeline).
 
 ### 1. Install
 
+**Maintainer / full workstation** (`install.sh` — Python deps + optional
+Go/CLI binaries):
+
 ```bash
-git clone https://github.com/d4rk-pri0r/NexusRecon.git
+git clone https://github.com/d4rkpr10r-Labs/NexusRecon.git
 cd NexusRecon
 ./install.sh                  # creates venv, installs Python deps + system binaries
 source venv/bin/activate
+./scripts/verify_install.sh   # local health check (also used in CI)
 ```
+
+**Wheel / PyPI-like path** (what CI automates on Linux x86_64): build a
+wheel, install into a clean venv, confirm `nexusrecon` and
+`nexusrecon-verify` console scripts, then run `scripts/verify_install.sh`.
+See [docs/install-verification.md](docs/install-verification.md) and the
+`fresh-install` job in `.github/workflows/test.yml`. `packs/burp` is
+checkout-only (not shipped in the wheel). Linux arm64 and
+`pipx install nexusrecon` remain maintainer-manual until published.
 
 **Python 3.13 is recommended** (3.11-3.13 supported; **not 3.14**,
 CrewAI incompatibility). If `python3` points at 3.14:
@@ -479,9 +491,10 @@ Per-key tool-unlock matrix:
 
 ## Status
 
-**v0.7.0, beta.** Honesty-aligned with ROADMAP (2026-06-09 demotion
-pass). The default `nexusrecon run` story is the Living Graph +
-phase pipeline + dispatch loop + ranked reports + signed STIX path.
+**v0.8.0, beta.** Post-consultation reliability and asset-discovery
+stack on top of the honesty-aligned ROADMAP baseline. The default
+`nexusrecon run` story is the Living Graph + phase pipeline +
+dispatch loop + ranked reports + signed STIX path.
 Several post-0.5 packages remain in-tree and unit-tested but are
 **demoted** from the 1.0 marquee until they are wired or redesigned
 (see ROADMAP “Demoted out of the 1.0 story”).
