@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import abc
 import asyncio
+import os
 import random
 import subprocess
 from dataclasses import dataclass, field
@@ -224,14 +225,25 @@ class OSINTTool(abc.ABC):
         timeout_sec: int = 300,
         cwd: str | None = None,
     ) -> subprocess.CompletedProcess:
-        """Run a subprocess (for CLI tools like subfinder, gitleaks, etc.)."""
+        """Run a subprocess (for CLI tools like subfinder, gitleaks, etc.).
+
+        When a campaign proxy is bound, ``registry.execute()`` enters
+        ``proxy_context`` before ``run()``, so the active proxy URL is
+        threaded into the child as standard ``*_PROXY`` env vars. With no
+        proxy bound, ``env`` stays ``None`` (inherit parent unchanged).
+        """
+        from nexusrecon.opsec.context import proxy_env
+
         log.debug("Running subprocess", cmd=cmd)
+        overrides = proxy_env()
+        env = {**os.environ, **overrides} if overrides else None
         return subprocess.run(
             cmd,
             capture_output=True,
             text=True,
             timeout=timeout_sec,
             cwd=cwd,
+            env=env,
         )
 
 

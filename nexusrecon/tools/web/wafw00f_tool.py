@@ -3,10 +3,9 @@ from __future__ import annotations
 
 from typing import Any
 
-import httpx
-
+from nexusrecon.opsec.context import proxy_kwargs
 from nexusrecon.opsec.useragent import random_ua
-from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult
+from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult, make_http_client
 from nexusrecon.tools.registry import register_tool
 
 _HEADERS_BENIGN = {
@@ -111,7 +110,9 @@ class WafW00fTool(OSINTTool):
         wafs_detected: list[dict[str, Any]] = []
 
         try:
-            async with httpx.AsyncClient(headers=dict(_HEADERS_BENIGN), timeout=15.0, follow_redirects=True) as client:
+            async with make_http_client(headers=dict(_HEADERS_BENIGN), timeout=15.0, follow_redirects=True,
+                **proxy_kwargs()
+            ) as client:
                 # Benign probe
                 try:
                     benign = await client.get(f"https://{target}/")

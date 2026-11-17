@@ -7,8 +7,10 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-import httpx
 import structlog
+
+from nexusrecon.opsec.context import proxy_kwargs
+from nexusrecon.tools.base import make_http_client
 
 log = structlog.get_logger(__name__)
 
@@ -283,7 +285,9 @@ async def _validate_aws(cred: HarvestedCredential, raw_value: str) -> None:
 
 async def _validate_github(cred: HarvestedCredential, raw_value: str) -> None:
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with make_http_client(timeout=10.0,
+                **proxy_kwargs()
+            ) as client:
             resp = await client.get(
                 "https://api.github.com/user",
                 headers={"Authorization": f"token {raw_value}"},
@@ -299,7 +303,9 @@ async def _validate_github(cred: HarvestedCredential, raw_value: str) -> None:
 
 async def _validate_slack(cred: HarvestedCredential, raw_value: str) -> None:
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with make_http_client(timeout=10.0,
+                **proxy_kwargs()
+            ) as client:
             resp = await client.post(
                 "https://slack.com/api/auth.test",
                 data={"token": raw_value},

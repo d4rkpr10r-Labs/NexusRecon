@@ -3,11 +3,11 @@ from __future__ import annotations
 
 from typing import Any
 
-import httpx
 from bs4 import BeautifulSoup
 
+from nexusrecon.opsec.context import proxy_kwargs
 from nexusrecon.opsec.useragent import random_ua
-from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult
+from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult, make_http_client
 from nexusrecon.tools.registry import register_tool
 
 _HEADERS = {
@@ -29,7 +29,9 @@ class AhmiaTool(OSINTTool):
     async def run(self, target: str, **kwargs: Any) -> ToolResult:
         onion_results: list[dict[str, str]] = []
         try:
-            async with httpx.AsyncClient(headers=_HEADERS, timeout=20.0, follow_redirects=True) as client:
+            async with make_http_client(headers=_HEADERS, timeout=20.0, follow_redirects=True,
+                **proxy_kwargs()
+            ) as client:
                 resp = await client.get(
                     "https://ahmia.fi/search/",
                     params={"q": target},

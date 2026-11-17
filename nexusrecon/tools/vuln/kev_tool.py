@@ -3,9 +3,8 @@ from __future__ import annotations
 
 from typing import Any
 
-import httpx
-
-from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult
+from nexusrecon.opsec.context import proxy_kwargs
+from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult, make_http_client
 from nexusrecon.tools.registry import register_tool
 
 
@@ -22,7 +21,9 @@ class KEVTool(OSINTTool):
     async def run(self, target: str, **kwargs: Any) -> ToolResult:
         try:
             kev_url = "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
-            client = httpx.AsyncClient(timeout=15.0, follow_redirects=True)
+            client = make_http_client(timeout=15.0, follow_redirects=True,
+                **proxy_kwargs()
+            )
             resp = await client.get(kev_url)
 
             if resp.status_code != 200:

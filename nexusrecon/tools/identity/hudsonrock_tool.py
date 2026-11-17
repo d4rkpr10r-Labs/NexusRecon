@@ -43,10 +43,9 @@ from __future__ import annotations
 
 from typing import Any
 
-import httpx
-
+from nexusrecon.opsec.context import proxy_kwargs
 from nexusrecon.opsec.useragent import random_ua
-from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult
+from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult, make_http_client
 from nexusrecon.tools.registry import register_tool
 
 _BASE = "https://cavalier.hudsonrock.com/api/json/v2/osint-tools"
@@ -156,7 +155,9 @@ class HudsonRockTool(OSINTTool):
         api_key: str | None,
     ) -> dict[str, Any]:
         headers = _build_headers(api_key)
-        async with httpx.AsyncClient(headers=headers, timeout=15.0) as client:
+        async with make_http_client(headers=headers, timeout=15.0,
+                **proxy_kwargs()
+            ) as client:
             resp = await client.get(
                 f"{_BASE}/is-email-compromised",
                 params={"email": email},
@@ -202,7 +203,9 @@ class HudsonRockTool(OSINTTool):
         api_key: str | None,
     ) -> dict[str, Any]:
         headers = _build_headers(api_key)
-        async with httpx.AsyncClient(headers=headers, timeout=20.0) as client:
+        async with make_http_client(headers=headers, timeout=20.0,
+                **proxy_kwargs()
+            ) as client:
             resp = await client.get(
                 f"{_BASE}/is-domain-compromised",
                 params={"domain": domain},

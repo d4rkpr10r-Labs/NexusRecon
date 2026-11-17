@@ -3,10 +3,9 @@ from __future__ import annotations
 
 from typing import Any
 
-import httpx
-
+from nexusrecon.opsec.context import proxy_kwargs
 from nexusrecon.opsec.useragent import random_ua
-from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult
+from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult, make_http_client
 from nexusrecon.tools.registry import register_tool
 
 
@@ -28,13 +27,14 @@ class CrunchbaseTool(OSINTTool):
         permalink = target.split(".")[0].lower().replace(" ", "-")
 
         try:
-            async with httpx.AsyncClient(
+            async with make_http_client(
                 base_url="https://api.crunchbase.com/api/v4",
                 headers={
                     "Accept": "application/json",
                     "User-Agent": random_ua(),
                 },
                 timeout=20.0,
+                **proxy_kwargs()
             ) as client:
                 # Fetch org entity with key cards
                 resp = await client.get(

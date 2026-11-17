@@ -10,8 +10,9 @@ from typing import Any
 
 import httpx
 
+from nexusrecon.opsec.context import proxy_kwargs
 from nexusrecon.opsec.useragent import random_ua
-from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult
+from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult, make_http_client
 from nexusrecon.tools.registry import register_tool
 
 _HEADERS = {
@@ -270,7 +271,9 @@ class APKAnalyzerTool(OSINTTool):
             "third_party_libs": [],
         }
 
-        async with httpx.AsyncClient(headers=_HEADERS, timeout=30.0, follow_redirects=True) as client:
+        async with make_http_client(headers=_HEADERS, timeout=30.0, follow_redirects=True,
+                **proxy_kwargs()
+            ) as client:
             apk_bytes = await _fetch_apkmirror(target, client)
 
             if apk_bytes:

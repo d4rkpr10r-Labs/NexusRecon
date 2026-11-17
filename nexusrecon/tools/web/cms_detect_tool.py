@@ -4,10 +4,9 @@ from __future__ import annotations
 import re
 from typing import Any
 
-import httpx
-
+from nexusrecon.opsec.context import proxy_kwargs
 from nexusrecon.opsec.useragent import random_ua
-from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult
+from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult, make_http_client
 from nexusrecon.tools.registry import register_tool
 
 # Each entry: (name, confidence_weight, probe_path, [body_patterns], [header_patterns])
@@ -57,10 +56,11 @@ class CMSDetectTool(OSINTTool):
             probed_paths[path] = ([], [])
 
         try:
-            async with httpx.AsyncClient(
+            async with make_http_client(
                 headers=headers,
                 timeout=10.0,
                 follow_redirects=True,
+                **proxy_kwargs()
             ) as client:
                 for path in probed_paths:
                     url = base_url.rstrip("/") + path

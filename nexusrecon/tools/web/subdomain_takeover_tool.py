@@ -7,8 +7,9 @@ from typing import Any
 import dns.asyncresolver
 import httpx
 
+from nexusrecon.opsec.context import proxy_kwargs
 from nexusrecon.opsec.useragent import random_ua
-from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult
+from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult, make_http_client
 from nexusrecon.tools.registry import register_tool
 
 _HEADERS = {
@@ -90,7 +91,9 @@ class SubdomainTakeoverTool(OSINTTool):
         sem = asyncio.Semaphore(20)
         vulnerable: list[dict[str, Any]] = []
 
-        async with httpx.AsyncClient(headers=_HEADERS, timeout=10.0, follow_redirects=True) as client:
+        async with make_http_client(headers=_HEADERS, timeout=10.0, follow_redirects=True,
+                **proxy_kwargs()
+            ) as client:
             results = await asyncio.gather(
                 *(_check_takeover(sub, client, sem) for sub in subdomains),
                 return_exceptions=True,

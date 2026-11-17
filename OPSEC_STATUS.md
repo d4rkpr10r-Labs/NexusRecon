@@ -34,79 +34,49 @@ tests above will start asserting on them.
 
 **Wired (consume the proxy context):**
 
-- 5 `BaseHTTPTool` subclasses: `shodan`, `virustotal`, `censys`,
-  `fullhunt`, `greynoise` ── spread `**self._proxy_kwargs()` into
-  their httpx clients.
-- 2 library-driven tools that consume `proxy_kwargs()` directly via
-  the free function in `nexusrecon.opsec.context`: `holehe` (rotates
-  UA per call too, post-fix) and the inner client `maigret` would
-  use if/when its subprocess CLI supports proxy flags.
+- `BaseHTTPTool` reference tools (`shodan`, `virustotal`, `censys`,
+  `fullhunt`, `greynoise`, plus later BaseHTTPTool migrants) spread
+  `**self._proxy_kwargs()` into `make_http_client(...)`.
+- Library-driven tools that call `proxy_kwargs()` directly:
+  `holehe` (and peers).
+- **NEX-10:** remaining HTTP tools and `credential_harvester` now build
+  clients via `make_http_client(..., **proxy_kwargs())` so a bound
+  campaign proxy + TLS impersonation ContextVar apply on the wire.
+  Ad-hoc phase-6 probes continue to use `registry.opsec_http_get`
+  (rate limit + jitter + proxy + TLS).
 
-**Not wired (still need migration):**
+**Still out of scope / residual:**
 
-- ~63 HTTP tools that build raw `httpx.AsyncClient(...)` calls in
-  their `run()` methods without consulting either `_proxy_kwargs()`
-  or `proxy_kwargs()`. They will silently bypass the proxy manager.
+- Subprocess tools now inherit the campaign proxy via
+  `opsec.context.proxy_env()` → `HTTP(S)_PROXY` / `ALL_PROXY` in
+  `OSINTTool.run_subprocess` and maigret's `create_subprocess_exec`
+  (NEX-10). Binaries that ignore those env vars still need native flags.
+- Cross-process LangGraph checkpointers (F-014 / NEX-9); durable resume
+  is `state.json`.
+- Per-campaign registry ContextVar isolation (NEX-11).
 
-To migrate a tool:
+To migrate a *new* HTTP tool:
 
-1. Change parent from `OSINTTool` to `BaseHTTPTool` (if the tool fits
-   the JSON-HTTP-API shape and benefits from `classify_response`).
-2. Add `provider_label = "..."` if the auto-derived name is ugly.
-3. Replace any private `_classify_status` helper with calls to
-   `self.classify_response(resp, endpoint=...)`.
-4. Spread `**self._proxy_kwargs()` into every `httpx.AsyncClient(...)`
-   call inside `run()`.
-5. For tools that can't reasonably inherit from `BaseHTTPTool`
-   (subprocess wrappers, library-driven tools): import
-   `from nexusrecon.opsec.context import proxy_kwargs` and spread
-   `**proxy_kwargs()` into the AsyncClient ctor directly.
-6. Run the tool's integration tests to confirm no regression.
+1. Prefer `make_http_client(..., **proxy_kwargs())` (or
+   `**self._proxy_kwargs()` on `BaseHTTPTool`).
+2. For ad-hoc GETs outside `execute()`, use `registry.opsec_http_get`.
+3. Run the structural OPSEC tests in `tests/integration/test_opsec_wire.py`.
 
-**Structural test catches new tools that miss the migration:**
-`tests/integration/test_opsec_wire.py::TestProxySupportStructural::test_every_basehttp_tool_calls_proxy_kwargs`
-walks every registered `BaseHTTPTool` subclass and asserts the source
-calls `_proxy_kwargs()`. A tool that inherits from BaseHTTPTool but
-doesn't consume the helper fails the test.
+**Structural tests:**
 
-Track per-tool migration in PRs that follow the
-`feat(tools): migrate <tool> to BaseHTTPTool` pattern.
+- `TestProxySupportStructural::test_every_basehttp_tool_calls_proxy_kwargs`
+- `TestProxySupportStructural::test_make_http_client_call_sites_pass_proxy_kwargs`
+  (NEX-10) — fails if any `nexusrecon/` module builds
+  `make_http_client` / `httpx.AsyncClient` without `proxy_kwargs`.
 
 ### Campaign-runner integration
 
-`ToolRegistry.set_campaign_context()` accepts `stealth_profile`,
-`rate_limiter`, and `proxy_manager` keyword args, but the
-**campaign runner does not yet pass them**. Today every campaign runs
-with `rate_limiter=None` and `proxy_manager=None`, which means:
-
-- The rate limiter exists but is dormant during campaigns.
-- The proxy manager exists but is dormant during campaigns.
-- The TUI's stealth-profile selection (paranoid/high/normal/loud) is
-  read into the scope file, validated, persisted in the campaign
-  state, but never actually translated into `RateLimiter.from_profile`
-  + `ProxyManager(...)` + `set_campaign_context(...)`.
-
-To close this gap, the campaign runner at
-`nexusrecon/core/campaign.py` needs:
-
-```python
-profile = get_profile(scope.constraints.stealth_profile)
-rate_limiter = RateLimiter.from_profile(profile)
-proxy_manager = ProxyManager(
-    proxy_url=config.proxy_url,
-    tor_proxy=config.tor_proxy,
-)
-registry.set_campaign_context(
-    scope_guard=scope_guard,
-    cache=cache,
-    audit_log=audit_log,
-    stealth_profile=profile,
-    rate_limiter=rate_limiter,
-    proxy_manager=proxy_manager,
-)
-```
-
-This is a small wire-up but it crosses several modules. Separate PR.
+**Wired (NEX-10):** CLI `run`, CLI `resume`, and the TUI runner all call
+`nexusrecon.opsec.setup.bind_campaign_opsec(...)`, which builds the
+stealth profile / rate limiter / proxy manager via `build_opsec` and
+binds them on the global registry before any phase runs. Phase nodes
+that use `registry.execute()` and `registry.opsec_http_get` therefore
+inherit rate limits, jitter, proxy routing, and TLS impersonation.
 
 ### Cross-campaign handle ubiquity tracking (Phase B item B3)
 

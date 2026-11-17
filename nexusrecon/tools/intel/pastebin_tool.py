@@ -9,8 +9,9 @@ from typing import Any
 import httpx
 
 from nexusrecon.core.credential_harvester import CRED_PATTERNS
+from nexusrecon.opsec.context import proxy_kwargs
 from nexusrecon.opsec.useragent import random_ua
-from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult
+from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult, make_http_client
 from nexusrecon.tools.registry import register_tool
 
 _HEADERS = {
@@ -41,7 +42,9 @@ class PastebinTool(OSINTTool):
     async def run(self, target: str, **kwargs: Any) -> ToolResult:
         pastes: list[dict[str, Any]] = []
 
-        async with httpx.AsyncClient(headers=_HEADERS, timeout=15.0, follow_redirects=True) as client:
+        async with make_http_client(headers=_HEADERS, timeout=15.0, follow_redirects=True,
+                **proxy_kwargs()
+            ) as client:
             psbdmp_pastes = await self._search_psbdmp(client, target)
             gist_pastes = await self._search_github_gists(client, target)
             pastes.extend(psbdmp_pastes)

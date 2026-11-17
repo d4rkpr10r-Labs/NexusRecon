@@ -3,10 +3,9 @@ from __future__ import annotations
 
 from typing import Any
 
-import httpx
-
+from nexusrecon.opsec.context import proxy_kwargs
 from nexusrecon.opsec.useragent import random_ua
-from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult
+from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult, make_http_client
 from nexusrecon.tools.registry import register_tool
 
 
@@ -27,7 +26,7 @@ class VulnersTool(OSINTTool):
         cve_id = target.upper()
 
         try:
-            async with httpx.AsyncClient(
+            async with make_http_client(
                 base_url="https://vulners.com",
                 headers={
                     "Accept": "application/json",
@@ -35,6 +34,7 @@ class VulnersTool(OSINTTool):
                     "User-Agent": random_ua(),
                 },
                 timeout=15.0,
+                **proxy_kwargs()
             ) as client:
                 resp = await client.post(
                     "/api/v3/search/lucene/",

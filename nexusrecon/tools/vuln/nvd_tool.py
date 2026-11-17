@@ -3,9 +3,8 @@ from __future__ import annotations
 
 from typing import Any
 
-import httpx
-
-from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult
+from nexusrecon.opsec.context import proxy_kwargs
+from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult, make_http_client
 from nexusrecon.tools.registry import register_tool
 
 
@@ -20,9 +19,10 @@ class NVDTool(OSINTTool):
 
     async def run(self, target: str, **kwargs: Any) -> ToolResult:
         try:
-            client = httpx.AsyncClient(
+            client = make_http_client(
                 base_url="https://services.nvd.nist.gov/rest/json/cves/2.0",
                 timeout=15.0,
+                **proxy_kwargs()
             )
 
             # Headers required by NVD API

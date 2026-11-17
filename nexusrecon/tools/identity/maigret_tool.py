@@ -401,10 +401,19 @@ class MaigretTool(OSINTTool):
         # bound the longest valid run; floor at 60s for tiny site lists.
         overall_timeout = min(300, max(60, top_sites * timeout // 50))
 
+        # Maigret manages its own subprocess (not run_subprocess); thread
+        # the campaign proxy the same way via proxy_env().
+        import os
+
+        from nexusrecon.opsec.context import proxy_env
+
+        _proxy_overrides = proxy_env()
+        _subproc_env = {**os.environ, **_proxy_overrides} if _proxy_overrides else None
         proc = await asyncio.create_subprocess_exec(
             *cmd,
             stdout=asyncio.subprocess.DEVNULL,
             stderr=asyncio.subprocess.PIPE,
+            env=_subproc_env,
         )
         try:
             _, _stderr = await asyncio.wait_for(proc.communicate(), timeout=overall_timeout)

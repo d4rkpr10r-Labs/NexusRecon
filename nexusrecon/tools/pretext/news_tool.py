@@ -34,15 +34,14 @@ from __future__ import annotations
 
 from typing import Any
 
-import httpx
-
 from nexusrecon.core.recent_activity import (
     DEFAULT_WINDOW_DAYS,
     RecentActivity,
     filter_by_window,
 )
+from nexusrecon.opsec.context import proxy_kwargs
 from nexusrecon.opsec.useragent import random_ua
-from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult
+from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult, make_http_client
 from nexusrecon.tools.registry import register_tool
 
 NEWS_SOURCES = [
@@ -130,7 +129,9 @@ class NewsTool(OSINTTool):
 
     async def _fetch_newsapi(self, target: str, api_key: str) -> list[dict[str, Any]]:
         try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
+            async with make_http_client(timeout=10.0,
+                **proxy_kwargs()
+            ) as client:
                 resp = await client.get(
                     NEWS_API_URL,
                     params={
@@ -159,7 +160,9 @@ class NewsTool(OSINTTool):
 
     async def _fetch_rss_sources(self, target: str) -> list[dict[str, Any]]:
         articles: list[dict[str, Any]] = []
-        async with httpx.AsyncClient(timeout=8.0, follow_redirects=True) as client:
+        async with make_http_client(timeout=8.0, follow_redirects=True,
+                **proxy_kwargs()
+            ) as client:
             for source in NEWS_SOURCES:
                 try:
                     params = {k: v.format(target=target) for k, v in source["params"].items()}

@@ -3,9 +3,8 @@ from __future__ import annotations
 
 from typing import Any
 
-import httpx
-
-from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult
+from nexusrecon.opsec.context import proxy_kwargs
+from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult, make_http_client
 from nexusrecon.tools.registry import register_tool
 
 
@@ -22,12 +21,13 @@ class WikipediaTool(OSINTTool):
         company = target.split(".")[0].replace("-", " ")
 
         try:
-            async with httpx.AsyncClient(
+            async with make_http_client(
                 headers={
                     "Accept": "application/json",
                     "User-Agent": "NexusRecon OSINT Platform/1.0 (authorized engagement)",
                 },
                 timeout=15.0,
+                **proxy_kwargs()
             ) as client:
                 # Step 1 — Wikidata entity search
                 search_resp = await client.get(

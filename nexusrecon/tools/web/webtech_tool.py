@@ -4,10 +4,9 @@ from __future__ import annotations
 import re
 from typing import Any
 
-import httpx
-
+from nexusrecon.opsec.context import proxy_kwargs
 from nexusrecon.opsec.useragent import random_ua
-from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult
+from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult, make_http_client
 from nexusrecon.tools.registry import register_tool
 
 TECH_SIGNATURES: dict[str, dict[str, Any]] = {
@@ -68,7 +67,9 @@ class WebTechTool(OSINTTool):
         url = f"https://{target}" if not target.startswith("http") else target
         found: dict[str, Any] = {}
 
-        async with httpx.AsyncClient(timeout=15.0, follow_redirects=True, verify=False) as client:
+        async with make_http_client(timeout=15.0, follow_redirects=True, verify=False,
+                **proxy_kwargs()
+            ) as client:
             try:
                 resp = await client.get(url, headers={"User-Agent": USER_AGENT})
                 headers = {k.lower(): v.lower() for k, v in dict(resp.headers).items()}

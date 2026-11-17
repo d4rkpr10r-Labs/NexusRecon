@@ -298,23 +298,24 @@ def run(
     # registry. Binding the stealth profile / rate limiter / proxy manager
     # is what makes the scope's stealth_profile and NEXUS_PROXY_URL actually
     # take effect on the wire (without this they were config-time fiction).
-    from nexusrecon.opsec.setup import ProxyRequiredError, build_opsec
+    from nexusrecon.opsec.setup import ProxyRequiredError, bind_campaign_opsec
     from nexusrecon.tools.registry import get_registry
     scope_guard = ScopeGuard(scope_model)
     try:
-        opsec = build_opsec(scope_model, get_config())
+        bind_campaign_opsec(
+            scope_guard, campaign.cache, campaign.audit_log,
+            scope_model, get_config(),
+        )
     except ProxyRequiredError as e:
         console.print(f"[bold red]OPSEC: {e}[/bold red]")
         raise typer.Exit(1)
-    get_registry().set_campaign_context(
-        scope_guard, campaign.cache, campaign.audit_log, **opsec
-    )
 
     if dry_run:
         console.print("[bold green]Dry run — scope is valid, campaign ready.[/bold green]")
         console.print(f"Campaign ID: [cyan]{campaign.campaign_id}[/cyan]")
         console.print(f"Would create output at: [cyan]{campaign.campaign_dir}[/cyan]")
         console.print(scope_model.summary())
+        get_registry().clear_campaign_context()
         return
 
     # Phase 1 PR B: planner orchestration. ``--plan-only`` runs
@@ -395,6 +396,7 @@ def run(
         if rationale:
             console.print(f"\n[dim]Rationale:[/dim] {rationale}")
         console.print(f"\nWritten to: [cyan]{plan_path}[/cyan]")
+        get_registry().clear_campaign_context()
         return
 
     # Run the campaign
@@ -618,6 +620,8 @@ def run(
     except Exception as e:
         console.print(f"[bold red]Campaign failed:[/bold red] {e}")
         raise typer.Exit(1)
+    finally:
+        get_registry().clear_campaign_context()
 
 
 @app.command()
@@ -717,7 +721,7 @@ def resume(campaign_id: str = typer.Argument(..., help="Campaign ID to resume"))
             raise typer.Exit(1)
 
     from nexusrecon.core.campaign_runner import run_campaign
-    from nexusrecon.opsec.setup import ProxyRequiredError, build_opsec
+    from nexusrecon.opsec.setup import ProxyRequiredError, bind_campaign_opsec
     from nexusrecon.tools.registry import get_registry
 
     mode_raw = str(state_data.get("mode") or "medium").lower()
@@ -745,13 +749,13 @@ def resume(campaign_id: str = typer.Argument(..., help="Campaign ID to resume"))
 
     scope_guard = ScopeGuard(scope_model)
     try:
-        opsec = build_opsec(scope_model, get_config())
+        bind_campaign_opsec(
+            scope_guard, campaign.cache, campaign.audit_log,
+            scope_model, get_config(),
+        )
     except ProxyRequiredError as e:
         console.print(f"[bold red]OPSEC: {e}[/bold red]")
         raise typer.Exit(1)
-    get_registry().set_campaign_context(
-        scope_guard, campaign.cache, campaign.audit_log, **opsec
-    )
 
     console.print("\n[bold green]Continuing campaign execution via shared runner...[/bold green]")
 

@@ -3,9 +3,8 @@ from __future__ import annotations
 
 from typing import Any
 
-import httpx
-
-from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult
+from nexusrecon.opsec.context import proxy_kwargs
+from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult, make_http_client
 from nexusrecon.tools.registry import register_tool
 
 
@@ -24,10 +23,11 @@ class PassiveDNSTool(OSINTTool):
             return ToolResult(success=False, source=self.name, error="SECURITYTRAILS_API_KEY not set")
 
         try:
-            async with httpx.AsyncClient(
+            async with make_http_client(
                 base_url="https://api.securitytrails.com/v1",
                 headers={"APIKEY": key},
                 timeout=15.0,
+                **proxy_kwargs()
             ) as client:
                 results: dict[str, Any] = {}
                 endpoint_errors: list[str] = []

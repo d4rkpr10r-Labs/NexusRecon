@@ -17,7 +17,8 @@ from typing import Any
 
 import httpx
 
-from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult
+from nexusrecon.opsec.context import proxy_kwargs
+from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult, make_http_client
 from nexusrecon.tools.registry import register_tool
 
 GITHUB_CODE_DORKS = [
@@ -86,11 +87,12 @@ class GitHubTool(OSINTTool):
                 "Accept": "application/vnd.github+json",
                 "User-Agent": "NexusRecon/1.0",
             }
-            self._http = httpx.AsyncClient(
+            self._http = make_http_client(
                 base_url="https://api.github.com",
                 headers=headers,
                 timeout=10.0,
                 http2=True,
+                **proxy_kwargs()
             )
         return self._http
 

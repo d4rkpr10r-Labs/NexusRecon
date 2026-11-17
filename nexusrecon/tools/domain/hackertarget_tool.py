@@ -3,10 +3,9 @@ from __future__ import annotations
 
 from typing import Any
 
-import httpx
-
+from nexusrecon.opsec.context import proxy_kwargs
 from nexusrecon.opsec.useragent import random_ua
-from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult
+from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult, make_http_client
 from nexusrecon.tools.registry import register_tool
 
 
@@ -23,13 +22,14 @@ class HackerTargetTool(OSINTTool):
         target_type = kwargs.get("target_type", "domain")
 
         try:
-            async with httpx.AsyncClient(
+            async with make_http_client(
                 base_url="https://api.hackertarget.com",
                 headers={
                     "User-Agent": random_ua(),
                     "Accept": "text/plain",
                 },
                 timeout=20.0,
+                **proxy_kwargs()
             ) as client:
                 if target_type == "ip":
                     resp = await client.get("/reverseiplookup/", params={"q": target})

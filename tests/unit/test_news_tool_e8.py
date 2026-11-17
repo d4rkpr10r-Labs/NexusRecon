@@ -173,7 +173,7 @@ class TestNewsToolE8Output:
         mock_resp.status_code = 200
         mock_resp.text = xml
         with patch(
-            "nexusrecon.tools.pretext.news_tool.httpx.AsyncClient",
+            "nexusrecon.tools.pretext.news_tool.make_http_client",
         ) as cls:
             mock_client = AsyncMock()
             cls.return_value.__aenter__.return_value = mock_client
@@ -194,7 +194,7 @@ class TestNewsToolE8Output:
         mock_resp.status_code = 200
         mock_resp.text = xml
         with patch(
-            "nexusrecon.tools.pretext.news_tool.httpx.AsyncClient",
+            "nexusrecon.tools.pretext.news_tool.make_http_client",
         ) as cls:
             mock_client = AsyncMock()
             cls.return_value.__aenter__.return_value = mock_client
@@ -222,7 +222,7 @@ class TestNewsToolE8Output:
         mock_resp.status_code = 200
         mock_resp.text = xml
         with patch(
-            "nexusrecon.tools.pretext.news_tool.httpx.AsyncClient",
+            "nexusrecon.tools.pretext.news_tool.make_http_client",
         ) as cls:
             mock_client = AsyncMock()
             cls.return_value.__aenter__.return_value = mock_client
@@ -247,7 +247,7 @@ class TestNewsToolE8Output:
         mock_resp.status_code = 200
         mock_resp.text = xml
         with patch(
-            "nexusrecon.tools.pretext.news_tool.httpx.AsyncClient",
+            "nexusrecon.tools.pretext.news_tool.make_http_client",
         ) as cls:
             mock_client = AsyncMock()
             cls.return_value.__aenter__.return_value = mock_client
@@ -268,7 +268,7 @@ class TestNewsToolE8Output:
         mock_resp.status_code = 200
         mock_resp.text = xml
         with patch(
-            "nexusrecon.tools.pretext.news_tool.httpx.AsyncClient",
+            "nexusrecon.tools.pretext.news_tool.make_http_client",
         ) as cls:
             mock_client = AsyncMock()
             cls.return_value.__aenter__.return_value = mock_client

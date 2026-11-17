@@ -4,9 +4,8 @@ from __future__ import annotations
 import asyncio
 from typing import Any
 
-import httpx
-
-from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult
+from nexusrecon.opsec.context import proxy_kwargs
+from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult, make_http_client
 from nexusrecon.tools.registry import register_tool
 
 CURATED_DORKS = [
@@ -48,13 +47,14 @@ class GitDorkerTool(OSINTTool):
             return ToolResult(success=False, source=self.name, error="GITHUB_TOKEN not set")
 
         try:
-            client = httpx.AsyncClient(
+            client = make_http_client(
                 base_url="https://api.github.com",
                 headers={
                     "Authorization": f"token {token}",
                     "Accept": "application/vnd.github+json",
                 },
                 timeout=10.0,
+                **proxy_kwargs()
             )
 
             results = []

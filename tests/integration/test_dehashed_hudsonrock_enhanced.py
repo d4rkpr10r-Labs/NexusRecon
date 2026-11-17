@@ -287,7 +287,7 @@ class TestHudsonRockEnhanced:
         mock_resp = MagicMock()
         mock_resp.status_code = 404
 
-        with patch("nexusrecon.tools.identity.hudsonrock_tool.httpx.AsyncClient") as cc:
+        with patch("nexusrecon.tools.identity.hudsonrock_tool.make_http_client") as cc:
             mc = AsyncMock()
             cc.return_value.__aenter__.return_value = mc
             mc.get.return_value = mock_resp
@@ -315,7 +315,7 @@ class TestHudsonRockEnhanced:
         mock_resp.status_code = 200
         mock_resp.json.return_value = raw
 
-        with patch("nexusrecon.tools.identity.hudsonrock_tool.httpx.AsyncClient") as cc:
+        with patch("nexusrecon.tools.identity.hudsonrock_tool.make_http_client") as cc:
             mc = AsyncMock()
             cc.return_value.__aenter__.return_value = mc
             mc.get.return_value = mock_resp
@@ -356,7 +356,7 @@ class TestHudsonRockEnhanced:
         mock_resp.status_code = 200
         mock_resp.json.return_value = raw
 
-        with patch("nexusrecon.tools.identity.hudsonrock_tool.httpx.AsyncClient") as cc:
+        with patch("nexusrecon.tools.identity.hudsonrock_tool.make_http_client") as cc:
             mc = AsyncMock()
             cc.return_value.__aenter__.return_value = mc
             mc.get.return_value = mock_resp
@@ -393,7 +393,7 @@ class TestHudsonRockEnhanced:
         mock_resp.status_code = 200
         mock_resp.json.return_value = raw
 
-        with patch("nexusrecon.tools.identity.hudsonrock_tool.httpx.AsyncClient") as cc:
+        with patch("nexusrecon.tools.identity.hudsonrock_tool.make_http_client") as cc:
             mc = AsyncMock()
             cc.return_value.__aenter__.return_value = mc
             mc.get.return_value = mock_resp
@@ -413,7 +413,7 @@ class TestHudsonRockEnhanced:
         mock_resp = MagicMock()
         mock_resp.status_code = 404
 
-        with patch("nexusrecon.tools.identity.hudsonrock_tool.httpx.AsyncClient") as cc:
+        with patch("nexusrecon.tools.identity.hudsonrock_tool.make_http_client") as cc:
             mc = AsyncMock()
             cc.return_value.__aenter__.return_value = mc
             mc.get.return_value = mock_resp
@@ -453,7 +453,7 @@ class TestHudsonRockEnhanced:
         mock_resp.status_code = 200
         mock_resp.json.return_value = raw
 
-        with patch("nexusrecon.tools.identity.hudsonrock_tool.httpx.AsyncClient") as cc:
+        with patch("nexusrecon.tools.identity.hudsonrock_tool.make_http_client") as cc:
             mc = AsyncMock()
             cc.return_value.__aenter__.return_value = mc
             mc.get.return_value = mock_resp
@@ -507,7 +507,7 @@ class TestHudsonRockEnhanced:
         mock_resp.status_code = 200
         mock_resp.json.return_value = raw
 
-        with patch("nexusrecon.tools.identity.hudsonrock_tool.httpx.AsyncClient") as cc:
+        with patch("nexusrecon.tools.identity.hudsonrock_tool.make_http_client") as cc:
             mc = AsyncMock()
             cc.return_value.__aenter__.return_value = mc
             mc.get.return_value = mock_resp
@@ -539,7 +539,7 @@ class TestHudsonRockEnhanced:
 
         captured_headers = {}
 
-        with patch("nexusrecon.tools.identity.hudsonrock_tool.httpx.AsyncClient") as cc:
+        with patch("nexusrecon.tools.identity.hudsonrock_tool.make_http_client") as cc:
             mc = AsyncMock()
 
             def fake_enter(*args, **kwargs):
@@ -569,7 +569,7 @@ class TestHudsonRockEnhanced:
         mock_resp = MagicMock()
         mock_resp.status_code = 500
 
-        with patch("nexusrecon.tools.identity.hudsonrock_tool.httpx.AsyncClient") as cc:
+        with patch("nexusrecon.tools.identity.hudsonrock_tool.make_http_client") as cc:
             mc = AsyncMock()
             cc.return_value.__aenter__.return_value = mc
             mc.get.return_value = mock_resp

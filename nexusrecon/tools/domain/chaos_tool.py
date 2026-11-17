@@ -3,10 +3,9 @@ from __future__ import annotations
 
 from typing import Any
 
-import httpx
-
+from nexusrecon.opsec.context import proxy_kwargs
 from nexusrecon.opsec.useragent import random_ua
-from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult
+from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult, make_http_client
 from nexusrecon.tools.registry import register_tool
 
 
@@ -25,7 +24,7 @@ class ChaosTool(OSINTTool):
             return ToolResult(success=False, source=self.name, error="CHAOS_API_KEY not set")
 
         try:
-            async with httpx.AsyncClient(
+            async with make_http_client(
                 base_url="https://dns.projectdiscovery.io",
                 headers={
                     "Authorization": key,
@@ -33,6 +32,7 @@ class ChaosTool(OSINTTool):
                     "User-Agent": random_ua(),
                 },
                 timeout=30.0,
+                **proxy_kwargs()
             ) as client:
                 resp = await client.get(f"/dns/{target}/subdomains")
 

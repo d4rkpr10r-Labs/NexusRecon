@@ -3,10 +3,9 @@ from __future__ import annotations
 
 from typing import Any
 
-import httpx
-
+from nexusrecon.opsec.context import proxy_kwargs
 from nexusrecon.opsec.useragent import random_ua
-from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult
+from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult, make_http_client
 from nexusrecon.tools.registry import register_tool
 
 _DORK_TEMPLATES = [
@@ -43,14 +42,15 @@ class PublicCollabTool(OSINTTool):
 
         if bing_key:
             try:
-                async with httpx.AsyncClient(
+                async with make_http_client(
                     base_url="https://api.bing.microsoft.com/v7.0",
                     headers={
                         "Ocp-Apim-Subscription-Key": bing_key,
                         "User-Agent": random_ua(),
                     },
                     timeout=15.0,
-                ) as client:
+                **proxy_kwargs()
+            ) as client:
                     for dork in dorks[:5]:
                         resp = await client.get("/search", params={"q": dork, "count": 10})
                         if resp.status_code == 200:
@@ -70,7 +70,9 @@ class PublicCollabTool(OSINTTool):
 
         # Trello public board probe (no auth needed for public boards)
         try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
+            async with make_http_client(timeout=10.0,
+                **proxy_kwargs()
+            ) as client:
                 trello_resp = await client.get(
                     "https://trello.com/search",
                     params={"q": target, "modelTypes": "boards"},

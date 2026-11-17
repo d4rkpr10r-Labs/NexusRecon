@@ -3,10 +3,9 @@ from __future__ import annotations
 
 from typing import Any
 
-import httpx
-
+from nexusrecon.opsec.context import proxy_kwargs
 from nexusrecon.opsec.useragent import random_ua
-from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult
+from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult, make_http_client
 from nexusrecon.tools.registry import register_tool
 
 CDN_SIGNATURES: dict[str, dict[str, Any]] = {
@@ -97,7 +96,9 @@ class CDNTool(OSINTTool):
         # an empty payload regardless.
         probe_errors: dict[str, str] = {}
 
-        async with httpx.AsyncClient(timeout=10.0, follow_redirects=True, verify=False) as client:
+        async with make_http_client(timeout=10.0, follow_redirects=True, verify=False,
+                **proxy_kwargs()
+            ) as client:
             try:
                 resp = await client.get(url, headers={"User-Agent": USER_AGENT})
                 headers_raw = {k.lower(): v for k, v in dict(resp.headers).items()}
