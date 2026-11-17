@@ -6,6 +6,12 @@ install on each target platform and record the result in the coverage
 matrix below. This closes the "Fresh-VM install verification" beta blocker
 once all three rows are green.
 
+As of **v0.8.0**, Linux x86_64 wheel install is covered automatically by
+the `fresh-install` CI job (NEX-18 / #23). Treat that job as the
+canonical PyPI-like path; `install.sh` remains the full workstation
+path (Go/CLI binaries). `packs/burp` is checkout-only and must not
+appear in the wheel.
+
 ## Running the verifier
 
 ```sh
