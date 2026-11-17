@@ -17,6 +17,11 @@ import structlog
 
 log = structlog.get_logger(__name__)
 
+
+class CheckpointAbort(RuntimeError):
+    """Raised when a checkpoint failure is fatal under abort-on-checkpoint mode."""
+
+
 # (phase_id, display_name, tier_floor)
 _PHASE_TIER_FLOOR: dict[str, int] = {
     "phase1": 0,
@@ -112,6 +117,32 @@ async def run_campaign(
                 # Never let a misbehaving listener break the campaign.
                 pass
 
+    def _checkpoint_failed(phase_id: str, where: str, err: Exception) -> bool:
+        """Record a checkpoint failure. Return True if the run must abort.
+
+        Default behaviour (warn): log + append to ``state["errors"]`` and
+        continue so a transient disk blip does not discard in-memory work.
+        When ``state["abort_on_checkpoint_failure"]`` is truthy, also emit a
+        dedicated event and signal the caller to stop the phase loop — the
+        operator opted into hard-stop rather than a silently stale
+        ``state.json``.
+        """
+        msg = f"{phase_id}/{where}: {err}"
+        log.error("campaign checkpoint failed", phase=phase_id, where=where, error=str(err))
+        s.setdefault("errors", []).append(msg)
+        abort = bool(s.get("abort_on_checkpoint_failure"))
+        _emit({
+            "type": "checkpoint_failed",
+            "phase": phase_id,
+            "where": where,
+            "error": str(err),
+            "abort": abort,
+        })
+        if abort:
+            s["aborted"] = True
+            s["abort_reason"] = f"checkpoint failure ({where}): {err}"
+        return abort
+
     # ── Preflight tool-availability report (Wave F-A3) ──────────────────────
     # Surface the capability surface BEFORE the first phase: which tools
     # will run, and which are skipped for a missing binary, a missing key,
@@ -179,13 +210,8 @@ async def run_campaign(
             try:
                 campaign.save_state(s)
             except Exception as save_err:
-                log.error(
-                    "campaign checkpoint failed",
-                    phase=phase_id, error=str(save_err),
-                )
-                s.setdefault("errors", []).append(
-                    f"{phase_id}/save_state: {save_err}"
-                )
+                if _checkpoint_failed(phase_id, "save_state", save_err):
+                    break
             findings_count = len(s.get("findings", []))
             # Real entity count for the run-health summary (F-A5). phase4/phase8
             # persist the built EntityGraph as state["entity_graph"]
@@ -223,13 +249,10 @@ async def run_campaign(
                 try:
                     campaign.save_state(s)
                 except Exception as save_err:
-                    log.error(
-                        "campaign checkpoint failed after reflection",
-                        phase=phase_id, error=str(save_err),
-                    )
-                    s.setdefault("errors", []).append(
-                        f"{phase_id}/save_state_reflection: {save_err}"
-                    )
+                    if _checkpoint_failed(
+                        phase_id, "save_state_reflection", save_err,
+                    ):
+                        break
                 new_dispatches = len(s.get("dispatch_log", []) or []) - prior_dispatches
                 if new_dispatches > 0:
                     _emit({
@@ -308,6 +331,8 @@ async def run_campaign(
         "total_findings": len(s.get("findings", [])),
         "total_cost_usd": float(s.get("llm_cost_usd", 0.0)),
         "run_health": run_health,
+        "aborted": bool(s.get("aborted")),
+        "abort_reason": s.get("abort_reason"),
         "timestamp": datetime.utcnow().isoformat(),
     })
     return s

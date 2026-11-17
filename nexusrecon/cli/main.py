@@ -183,6 +183,15 @@ def run(
             "directory into a vault to read."
         ),
     ),
+    abort_on_checkpoint_failure: bool = typer.Option(
+        False,
+        "--abort-on-checkpoint-failure",
+        help=(
+            "Stop the campaign when state.json cannot be written after a "
+            "phase (default: warn, record the error, and continue). "
+            "Also honored via NEXUS_ABORT_ON_CHECKPOINT_FAILURE=1."
+        ),
+    ),
 ) -> None:
     """
     Launch a NexusRecon reconnaissance campaign.
@@ -419,6 +428,10 @@ def run(
             if pretext_targets else []
         ),
         "generate_obsidian": obsidian,
+        "abort_on_checkpoint_failure": bool(
+            abort_on_checkpoint_failure
+            or getattr(get_config(), "abort_on_checkpoint_failure", False)
+        ),
         "llm_cost_usd": 0.0,
         "max_llm_cost_usd": getattr(scope_model.constraints, "max_llm_cost_usd", 10.0),
         "tool_cost_usd": 0.0,
@@ -449,6 +462,7 @@ def run(
                     "generate_obsidian",
                     "pretext_targets",
                     "max_llm_cost_usd",
+                    "abort_on_checkpoint_failure",
                 }
                 for key, value in prior.items():
                     if key in preserve:
@@ -458,6 +472,10 @@ def run(
                 state["validate_credentials"] = validate_creds
                 state["generate_phishing_drafts"] = generate_phishing
                 state["generate_obsidian"] = obsidian
+                state["abort_on_checkpoint_failure"] = bool(
+                    abort_on_checkpoint_failure
+                    or getattr(get_config(), "abort_on_checkpoint_failure", False)
+                )
                 state["dispatch_mode"] = (
                     dispatch_mode if dispatch_mode in ("lite", "full", "off") else "lite"
                 )
