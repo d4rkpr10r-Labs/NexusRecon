@@ -53,7 +53,8 @@ tests above will start asserting on them.
   (NEX-10). Binaries that ignore those env vars still need native flags.
 - Cross-process LangGraph checkpointers (F-014 / NEX-9); durable resume
   is `state.json`.
-- Per-campaign registry ContextVar isolation (NEX-11).
+- ~~Per-campaign registry ContextVar isolation (NEX-11)~~ — done:
+  campaign binds live in ``ContextVar``; tool catalog stays shared.
 
 To migrate a *new* HTTP tool:
 

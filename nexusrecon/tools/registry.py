@@ -13,6 +13,10 @@ import hashlib
 import json
 import random
 import time
+from collections.abc import Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar, Token
+from dataclasses import dataclass
 from functools import lru_cache
 from typing import TYPE_CHECKING, Any
 
@@ -32,15 +36,67 @@ if TYPE_CHECKING:
 log = structlog.get_logger(__name__)
 
 
+@dataclass(frozen=True)
+class _CampaignBind:
+    """Per-task campaign services bound to the shared tool catalog (NEX-11)."""
+
+    scope_guard: Any = None
+    cache: Any = None
+    audit_log: Any = None
+    stealth_profile: Any = None
+    rate_limiter: Any = None
+    proxy_manager: Any = None
+
+
+# Task/async-local campaign bind. Tool *instances* stay on the process
+# singleton; scope/cache/audit/OPSEC must not leak across concurrent
+# campaigns (parallel TUI / nested asyncio tasks).
+_campaign_bind: ContextVar[_CampaignBind | None] = ContextVar(
+    "nexusrecon_campaign_bind", default=None,
+)
+
+
+def get_campaign_bind() -> _CampaignBind | None:
+    """Return the active per-task campaign bind, or ``None``."""
+    return _campaign_bind.get()
+
+
+@contextmanager
+def campaign_bind_scope(
+    scope_guard: Any,
+    cache: Any = None,
+    audit_log: Any = None,
+    stealth_profile: Any = None,
+    rate_limiter: Any = None,
+    proxy_manager: Any = None,
+) -> Iterator[_CampaignBind]:
+    """Temporarily bind campaign services for the current task."""
+    bind = _CampaignBind(
+        scope_guard=scope_guard,
+        cache=cache,
+        audit_log=audit_log,
+        stealth_profile=stealth_profile,
+        rate_limiter=rate_limiter,
+        proxy_manager=proxy_manager,
+    )
+    token = _campaign_bind.set(bind)
+    try:
+        yield bind
+    finally:
+        _campaign_bind.reset(token)
+
+
 class ToolRegistry:
     """
-    Global tool registry.  Singleton — use get_registry().
+    Shared tool catalog — use get_registry().
 
-    Stores tool instances by name.  Provides an execute() wrapper that
-    enforces scope, checks the cache, audit-logs every call, and delegates
-    to the tool's run() method.
+    Tool instances are process-global (``@register_tool``). On the shared
+    catalog, campaign services (scope, cache, audit, OPSEC) also live in
+    a task-local ``ContextVar`` so concurrent campaigns do not stomp each
+    other (NEX-11). Private ``ToolRegistry()`` fixtures keep instance-local
+    binds only.
 
-    OPSEC enforcement (rate limiter + proxy manager) is also applied at
+    OPSEC enforcement (rate limiter + proxy manager) is applied at
     execute() time when ``set_campaign_context`` has been called with a
     stealth profile. The rate limiter sleeps before each tool.run() call
     according to the per-source token-bucket. The proxy URL is propagated
@@ -51,12 +107,6 @@ class ToolRegistry:
 
     def __init__(self) -> None:
         self._tools: dict[str, OSINTTool] = {}
-        self._scope_guard: ScopeGuard | None = None
-        self._cache: Cache | None = None
-        self._audit_log: AuditLog | None = None
-        self._stealth_profile: StealthProfile | None = None
-        self._rate_limiter: RateLimiter | None = None
-        self._proxy_manager: ProxyManager | None = None
         # TUI-8: per-tool invocation history. Bounded deque per
         # tool, keyed by tool name. Each entry is a dict with
         # ``timestamp``, ``runtime_ms``, ``success``, ``error``,
@@ -68,6 +118,18 @@ class ToolRegistry:
         # Cap per-tool history at 50 entries. Cheap; the typical
         # campaign fires each tool a handful of times.
         self._invocation_history_cap: int = 50
+        # Instance-local bind for private ToolRegistry() objects (tests /
+        # fixtures). The process singleton also mirrors into ContextVar.
+        self._local_bind: _CampaignBind | None = None
+        # Token from the most recent ContextVar set on the singleton.
+        self._campaign_bind_token: Token | None = None
+
+    def _is_shared_catalog(self) -> bool:
+        """True when this instance is the process-wide get_registry() catalog."""
+        try:
+            return self is get_registry()
+        except Exception:
+            return False
 
     def set_campaign_context(
         self,
@@ -79,7 +141,7 @@ class ToolRegistry:
         proxy_manager: ProxyManager | None = None,
     ) -> None:
         """
-        Bind campaign-scoped services to the registry.
+        Bind campaign-scoped services for the current task/context.
 
         Must be called once at campaign start (before any phase node runs)
         so that execute() can enforce scope, use the cache, write the
@@ -92,22 +154,70 @@ class ToolRegistry:
         the rate limiter awaits its per-source token bucket before each
         tool.run() and the proxy URL is propagated to the tool via the
         ``proxy_context`` ContextVar.
+
+        NEX-11: on the shared ``get_registry()`` catalog the bind is also
+        stored in a task-local ``ContextVar`` so parallel campaigns isolate.
+        Private ``ToolRegistry()`` instances (tests) keep instance-local
+        binds only, so two fixtures in one task do not clobber each other.
         """
-        self._scope_guard = scope_guard
-        self._cache = cache
-        self._audit_log = audit_log
-        self._stealth_profile = stealth_profile
-        self._rate_limiter = rate_limiter
-        self._proxy_manager = proxy_manager
+        bind = _CampaignBind(
+            scope_guard=scope_guard,
+            cache=cache,
+            audit_log=audit_log,
+            stealth_profile=stealth_profile,
+            rate_limiter=rate_limiter,
+            proxy_manager=proxy_manager,
+        )
+        self._local_bind = bind
+        if self._is_shared_catalog():
+            self._campaign_bind_token = _campaign_bind.set(bind)
+        else:
+            self._campaign_bind_token = None
 
     def clear_campaign_context(self) -> None:
-        """Detach campaign services (call at campaign end or in tests)."""
-        self._scope_guard = None
-        self._cache = None
-        self._audit_log = None
-        self._stealth_profile = None
-        self._rate_limiter = None
-        self._proxy_manager = None
+        """Detach campaign services for the current task (campaign end / tests)."""
+        self._local_bind = None
+        token = self._campaign_bind_token
+        self._campaign_bind_token = None
+        if not self._is_shared_catalog():
+            return
+        if token is not None:
+            try:
+                _campaign_bind.reset(token)
+                return
+            except ValueError:
+                pass
+        _campaign_bind.set(None)
+
+    def _bind(self) -> _CampaignBind:
+        if self._is_shared_catalog():
+            ctx = _campaign_bind.get()
+            if ctx is not None:
+                return ctx
+        return self._local_bind or _CampaignBind()
+    @property
+    def _scope_guard(self) -> Any:
+        return self._bind().scope_guard
+
+    @property
+    def _cache(self) -> Any:
+        return self._bind().cache
+
+    @property
+    def _audit_log(self) -> Any:
+        return self._bind().audit_log
+
+    @property
+    def _stealth_profile(self) -> Any:
+        return self._bind().stealth_profile
+
+    @property
+    def _rate_limiter(self) -> Any:
+        return self._bind().rate_limiter
+
+    @property
+    def _proxy_manager(self) -> Any:
+        return self._bind().proxy_manager
 
     @property
     def audit_log(self):
@@ -584,5 +694,9 @@ def register_tool(cls: type[OSINTTool]) -> type[OSINTTool]:
 
 @lru_cache(maxsize=1)
 def get_registry() -> ToolRegistry:
-    """Return the singleton tool registry."""
+    """Return the process-wide tool catalog.
+
+    Campaign OPSEC/scope binds are task-local via ``ContextVar`` (NEX-11);
+    the catalog of registered tools remains shared.
+    """
     return ToolRegistry()

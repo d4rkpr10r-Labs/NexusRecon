@@ -962,8 +962,11 @@ class TestSubprocessProxyEnv:
             _fake_scope("loud"), _fake_config(proxy_url="socks5://127.0.0.1:9050")
         )
         reg.set_campaign_context(scope_guard=None, **opsec)  # type: ignore[arg-type]
-        with patch("nexusrecon.tools.base.subprocess.run", _fake_run):
-            asyncio.run(reg.execute("subproc_probe", "example.com"))
+        try:
+            with patch("nexusrecon.tools.base.subprocess.run", _fake_run):
+                asyncio.run(reg.execute("subproc_probe", "example.com"))
+        finally:
+            reg.clear_campaign_context()
 
         env = captured.get("env")
         assert env is not None, "proxy bound but subprocess env was not set"
@@ -980,6 +983,7 @@ class TestSubprocessProxyEnv:
             return SimpleNamespace(returncode=0, stdout="", stderr="")
 
         reg = ToolRegistry()
+        reg.clear_campaign_context()  # drop any leftover ContextVar bind
         reg.register(_SubprocProbe)
         with patch("nexusrecon.tools.base.subprocess.run", _fake_run):
             asyncio.run(reg.execute("subproc_probe", "example.com"))
