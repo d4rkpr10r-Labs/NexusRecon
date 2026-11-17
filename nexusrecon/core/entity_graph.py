@@ -1111,31 +1111,44 @@ class EntityGraph:
         for seed in (state.get("seeds") or []):
             _ensure_domain(seed, "scope")
 
+        def _intel_sources(info: Any, default: str) -> list[str]:
+            """Preserve the full source list from intel buckets.
+
+            Historically ``from_state`` kept only ``sources[0]``, which
+            collapsed multi-collector corroboration to a single label and
+            made Continuous Confidence corroboration a no-op after resume.
+            """
+            if not isinstance(info, dict):
+                return [default]
+            raw = info.get("sources")
+            if isinstance(raw, list):
+                out = [str(s) for s in raw if s]
+                return out or [default]
+            if isinstance(raw, str) and raw:
+                return [raw]
+            return [default]
+
         # Subdomains: each key in subdomain_intel is a subdomain;
         # the values may carry source-tool info. We harvest the
-        # source list if present, defaulting to a generic marker.
+        # full source list if present, defaulting to a generic marker.
         subdomain_intel = state.get("subdomain_intel") or {}
         for sub, info in subdomain_intel.items():
             if not isinstance(sub, str) or not sub:
                 continue
-            sources_field = (
-                info.get("sources") if isinstance(info, dict) else None
-            )
-            source = (
-                sources_field[0]
-                if isinstance(sources_field, list) and sources_field
-                else "phase1"
-            )
+            sources = _intel_sources(info, "phase1")
             # Best-effort parent domain inference: last two labels.
             parts = sub.split(".")
             parent = ".".join(parts[-2:]) if len(parts) >= 2 else sub
-            sid = g.add_subdomain(sub, parent=parent, source=source)
+            sid = g.add_subdomain(sub, parent=parent, source=sources[0])
+            for source in sources[1:]:
+                sid = g.add_subdomain(sub, parent=parent, source=source)
             sub_to_id[sub] = sid
             # Connect the subdomain to its parent domain node so the graph is
             # traversable from the seed down rather than a flat list.
-            did = _ensure_domain(parent, source)
+            primary = sources[0]
+            did = _ensure_domain(parent, primary)
             if did is not None and did != sid:
-                g.relate(did, sid, RelationshipType.HAS_SUBDOMAIN, source_tool=source)
+                g.relate(did, sid, RelationshipType.HAS_SUBDOMAIN, source_tool=primary)
 
         # Emails: email_intel.emails is a dict keyed by address.
         email_intel = state.get("email_intel") or {}
@@ -1143,15 +1156,9 @@ class EntityGraph:
         for em, info in emails.items():
             if not isinstance(em, str) or "@" not in em:
                 continue
-            sources_field = (
-                info.get("sources") if isinstance(info, dict) else None
-            )
-            source = (
-                sources_field[0]
-                if isinstance(sources_field, list) and sources_field
-                else "phase2"
-            )
-            g.add_email(em, source=source)
+            sources = _intel_sources(info, "phase2")
+            for source in sources:
+                g.add_email(em, source=source)
 
         # Cloud assets: cloud_intel keys are typically
         # ``provider/service`` strings; we record one
