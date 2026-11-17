@@ -46,7 +46,7 @@ cleanly on that platform.
 | Platform | Arch | Python | install.sh | verify_install | Date | Notes |
 |---|---|---|---|---|---|---|
 | macOS (M-series) | arm64 | 3.13.13 | ok | PASS (79/97 active) | 2026-07-14 | 11/13 binaries present (`maigret`, `arjun` absent); 2 stubs (`gowitness`, `dorks`); extras `tls`+`avatar` present. Re-verified on the dev workstation. |
-| Linux x86_64 | x86_64 | | not yet run | not yet run | | Debian/Ubuntu/Kali path in `install.sh`. |
+| Linux x86_64 | x86_64 | 3.11 / 3.12 / 3.13 | wheel (CI) | CI `fresh-install` job | 2026-11-17 | NEX-18: GitHub Actions builds a wheel, installs into a fresh venv (non-editable), asserts `nexusrecon` + `nexusrecon-verify` console scripts, runs `scripts/verify_install.sh`. `packs/burp` must not appear in the wheel. Full `install.sh` (Go tools) still maintainer-manual. |
 | Linux arm64 | arm64 | | not yet run | not yet run | | Same Debian path; confirm Go-tool and gitleaks/amass arm64 release URLs resolve. |
 
 ### Notes on the macOS run
@@ -67,6 +67,11 @@ The blocker asks for `./install.sh` to be tested on M-series macOS, Linux
 x86_64, and Linux arm64, with platform-specific failures documented and
 `pipx install nexusrecon` confirmed once published. The verifier gives a
 reproducible, paste-once result per platform so the matrix is filled by
-running one command on each box rather than by eyeballing a log. The
-macOS row is verified; the two Linux rows need a run on the respective
-hardware (or VM) to close the blocker.
+running one command on each box rather than by eyeballing a log.
+
+**NEX-18 / P3.13 (2026-11-17):** Linux x86_64 wheel install is automated in
+CI (`.github/workflows/test.yml` → `fresh-install`). That job is the
+PyPI-like path: build wheel → clean venv → `pip install` wheel → console
+scripts + `verify_install.sh`. Remaining maintainer work: Linux arm64
+hardware (or arm runner), full `install.sh` with Go binaries, and
+`pipx install nexusrecon` once the package is on PyPI.

@@ -72,7 +72,7 @@ Competitors already win on raw discovery yield (BBOT recursion, Amass asset DB d
 | Prioritization | Phase 8 ranking works on default path |
 | Continuous refresh | Watch demoted; micro-campaigns queue only |
 | Extensibility | Pack/SDK demoted; entry-point tools real |
-| Reliability / deployment | Smoke+unit strong; resume/OPSEC/packaging gaps; fresh-VM PyPI open |
+| Reliability / deployment | Smoke+unit strong; resume/OPSEC gaps closed; Linux x86_64 wheel CI (NEX-18); arm64/pipx-from-PyPI open |
 
 MITRE ATT&CK Enterprise mapping (taxonomy only, not executable proof): collectors primarily support **Reconnaissance** (T1590–T1598 family) and feed **Resource Development** context (e.g. compromised credentials as planning inputs). Do not treat taxonomy tags as coverage claims.
 

@@ -230,15 +230,18 @@ exists actually deliver on its claim.
 
 ### Release readiness (ship what exists, not new features)
 
-- [ ] **Fresh-VM install verification.** `scripts/verify_install.sh` plus the
-      coverage matrix in `docs/install-verification.md` exist. The verifier was
-      hardened to a clean one-paste output (it now quiets structlog before
-      building the registry, so tool-registration debug no longer buries the
-      `RESULT:` line), and the macOS (arm64) row was re-verified 2026-07-14:
-      `PASS, 79/97 active` (79, down from 80, after `dorks` was stubbed).
-      Maintainer-only remainder: run the verifier on Linux x86_64 and Linux
-      arm64 hardware (no VM access from the dev loop) and confirm
-      `pipx install nexusrecon` once the package is published to PyPI.
+- [x] **Fresh-VM install verification (Linux x86_64 CI).** `scripts/verify_install.sh`
+      plus the coverage matrix in `docs/install-verification.md` exist. The
+      verifier was hardened to a clean one-paste output (it now quiets
+      structlog before building the registry, so tool-registration debug no
+      longer buries the `RESULT:` line), and the macOS (arm64) row was
+      re-verified 2026-07-14: `PASS, 79/97 active` (79, down from 80, after
+      `dorks` was stubbed). **NEX-18 / P3.13:** GitHub Actions
+      `fresh-install` job builds a wheel, installs into a fresh venv on
+      Python 3.11/3.12/3.13 (ubuntu-latest / Linux x86_64), checks console
+      scripts, and runs the verifier. Maintainer-only remainder: Linux arm64
+      hardware (or arm runner), full `install.sh` with Go binaries, and
+      `pipx install nexusrecon` once published to PyPI.
 - [x] **The demo gif.** Rendered 2026-07-14 via `vhs docs/demo/nexusrecon.tape`
       and committed at `docs/demo/nexusrecon.gif` (the path the README embeds),
       so README:188 now resolves. Verified frame-by-frame: it faithfully shows
