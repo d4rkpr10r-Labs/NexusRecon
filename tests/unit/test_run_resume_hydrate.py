@@ -11,7 +11,7 @@ def test_resume_hydration_preserves_completed_phases(tmp_path: Path):
         "campaign_id": "nr-test",
         "completed_phases": ["phase1", "phase2"],
         "findings": [{"finding_id": "f1"}],
-        "subdomain_intel": {"a.example.com": {"sources": ["crtsh"]}},
+        "subdomain_intel": {"sub.example.test": {"sources": ["crtsh"]}},
         "validate_credentials": False,
         "dispatch_mode": "off",
     }
@@ -49,6 +49,6 @@ def test_resume_hydration_preserves_completed_phases(tmp_path: Path):
 
     assert state["completed_phases"] == ["phase1", "phase2"]
     assert state["findings"] == [{"finding_id": "f1"}]
-    assert "a.example.com" in state["subdomain_intel"]
+    assert "sub.example.test" in state["subdomain_intel"]
     assert state["validate_credentials"] is True
     assert state["dispatch_mode"] == "lite"
