@@ -111,7 +111,7 @@ Disposition key: keep / revise / defer / reject.
 | 6 | **Watch → re-collect then diff** (or permanently label snapshot-diff) | revise | Continuous monitoring is table stakes vs reNgine; current design cannot work |
 | 7 | **Promote Continuous Confidence as opt-in after (2)** | defer→keep later | Code exists; wiring before provenance fix wastes the feature |
 | 8 | **Question-driven collection (Intent → enforced Strategy budgets/criteria)** | revise | Planner exists; enforce read path or stop selling Strategy as product |
-| 9 | **Replayable fixture benchmarks** (yield/precision/restart) | keep | Needed to defend architecture bets with numbers |
+| 9 | **Replayable fixture benchmarks** (yield/precision/restart) | keep → *harness (NEX-20)* | `nexusrecon.benchmarks` + planted_passive fixture; attribution/wall-clock deferred |
 | 10 | **Packs marketplace / Vision-as-autonomous / fleet learning** | defer / reject for 1.0 | ROADMAP correctly demotes; no audience yet |
 | 11 | **Deception-aware evidence + adversarial hypothesis review** | keep (narrow) | Adversarial CLI exists; fold signals into ranking, don’t expand UI |
 | 12 | **Integrate don’t rewrite** for recursive DNS depth (shell out / ingest BBOT or Amass graphs) | keep | Cheaper than copying BBOT’s event engine |

@@ -49,3 +49,4 @@ Incorporated [Map architecture & leads](bc-bbed39bb-848c-5200-8b2c-e20f1e027759)
 7. Packs/burp load-path decision — exclude from wheel + honesty (NEX-17).
 8. Fresh-VM / wheel install matrix CI on Linux x86_64 (NEX-18).
 9. Provenance writers on default path + report §9 surfacing (NEX-19).
+10. Replayable fixture benchmarks harness (NEX-20).
