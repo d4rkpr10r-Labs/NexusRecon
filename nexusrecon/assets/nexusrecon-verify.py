@@ -48,7 +48,7 @@ except ImportError as exc:  # pragma: no cover
     sys.exit(1)
 
 
-def _fail(msg: str) -> "None":
+def _fail(msg: str) -> None:
     sys.stderr.write(f"VERIFICATION FAILED: {msg}\n")
     sys.exit(1)
 
@@ -75,7 +75,7 @@ def _fingerprint_public_key(public_key: Ed25519PublicKey) -> str:
 
 def _signed_message(bundle_hash: str) -> bytes:
     # MUST match nexusrecon.crypto.signing._signed_message.
-    return f"ed25519|{bundle_hash}".encode("utf-8")
+    return f"ed25519|{bundle_hash}".encode()
 
 
 def main(argv: list[str] | None = None) -> int:

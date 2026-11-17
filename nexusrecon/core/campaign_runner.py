@@ -18,10 +18,6 @@ import structlog
 log = structlog.get_logger(__name__)
 
 
-class CheckpointAbort(RuntimeError):
-    """Raised when a checkpoint failure is fatal under abort-on-checkpoint mode."""
-
-
 # (phase_id, display_name, tier_floor)
 _PHASE_TIER_FLOOR: dict[str, int] = {
     "phase1": 0,
