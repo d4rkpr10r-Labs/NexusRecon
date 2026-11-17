@@ -52,8 +52,9 @@ ROADMAP “Demoted out of the 1.0 story”):
    person, cloud asset, vulnerability, hypothesis, lead, open
    question) is a first-class node with confidence, citations, and
    traversable relationships. Agents reason over the graph instead of
-   flat dictionaries. (Per-source provenance writers are still a
-   follow-up — do not treat every node as fully attributed yet.)
+   flat dictionaries. Per-source ``ProvenanceRecord`` writers stamp
+   on the default ``from_state`` path (NEX-19); audit ``evidence_hash``
+   joins remain a follow-up.
 2. **Dispatch loop**: `reflection_node` + the dynamic dispatcher
    select follow-up tools between phases under lite/full/off
    policies. This loop is what earns its keep on a default run.
@@ -488,8 +489,8 @@ collector coverage still depends on keys/binaries.
 What's stable on the default path:
 
 - 12-phase pipeline + credential harvest + pretext intelligence
-- Living Intelligence Graph with confidence, edges, and mutation
-  events (provenance writers incomplete — do not overclaim)
+- Living Intelligence Graph with confidence, edges, mutation events,
+  and per-source provenance records on the default path (NEX-19)
 - Reflection + dynamic dispatcher (lite/full/off policies + caps)
 - STIX 2.1 export + Ed25519 signed receipts + packaged verifier
   asset

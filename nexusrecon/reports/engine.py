@@ -1432,6 +1432,104 @@ class ReportEngine:
 
         return str(path)
 
+    # ── Entity provenance (NEX-19 / P4.14) ─────────────────────────────────────
+
+    def _entity_provenance_section(self, state: dict[str, Any]) -> list[str]:
+        """Markdown fragment: Living Graph provenance coverage for §9.
+
+        Summarizes how many entities carry typed ``ProvenanceRecord`` lists
+        (vs legacy empty provenance) and lists a capped sample of
+        multi-source / single-source nodes for operator review.
+        """
+        graph_data = state.get("entity_graph")
+        nodes: list[dict[str, Any]] = []
+        if isinstance(graph_data, dict):
+            raw_nodes = graph_data.get("nodes") or []
+            if isinstance(raw_nodes, list):
+                nodes = [n for n in raw_nodes if isinstance(n, dict)]
+        if not nodes:
+            # Rebuild from intel buckets when state only has flat views
+            # (pre-phase4 snapshot or older campaigns).
+            try:
+                from nexusrecon.core.entity_graph import EntityGraph
+                rebuilt = EntityGraph.from_state(state).to_dict()
+                nodes = [
+                    n for n in (rebuilt.get("nodes") or [])
+                    if isinstance(n, dict)
+                ]
+            except Exception:
+                nodes = []
+
+        if not nodes:
+            return [
+                "### Entity provenance (Living Graph)",
+                "",
+                "*No entity graph nodes available for this run.*",
+                "",
+            ]
+
+        skip_types = {"hypothesis", "lead", "open_question"}
+        with_prov = 0
+        corroborated = 0
+        rows: list[tuple[str, str, str, int]] = []
+        for node in nodes:
+            etype = str(node.get("entity_type") or "")
+            if etype in skip_types:
+                continue
+            value = str(node.get("value") or "")
+            if not value:
+                continue
+            prov = node.get("provenance") or []
+            sources = node.get("sources") or []
+            if not isinstance(prov, list):
+                prov = []
+            if not isinstance(sources, list):
+                sources = []
+            n_prov = len(prov)
+            n_src = len({str(s) for s in sources if s})
+            if n_prov >= 1:
+                with_prov += 1
+            if max(n_prov, n_src) >= 2:
+                corroborated += 1
+            src_label = ", ".join(str(s) for s in sources[:6] if s) or "(none)"
+            if len(sources) > 6:
+                src_label += ", …"
+            rows.append((etype, value, src_label, n_prov))
+
+        total = len(rows)
+        lines = [
+            "### Entity provenance (Living Graph)",
+            "",
+            f"- **Entities with ≥1 provenance record:** {with_prov}/{total}",
+            f"- **Corroborated (≥2 sources):** {corroborated}/{total}",
+            "",
+        ]
+        # Prefer corroborated, then any with provenance; cap sample size.
+        rows.sort(key=lambda r: (-r[3], r[0], r[1]))
+        sample = rows[:25]
+        if sample:
+            lines.extend([
+                "| Type | Value | Sources | Provenance # |",
+                "|---|---|---|---|",
+            ])
+            for etype, value, src_label, n_prov in sample:
+                # Escape pipes in markdown table cells.
+                safe_val = value.replace("|", "\\|")
+                safe_src = src_label.replace("|", "\\|")
+                if len(safe_val) > 64:
+                    safe_val = safe_val[:61] + "…"
+                lines.append(
+                    f"| `{etype}` | `{safe_val}` | {safe_src} | {n_prov} |"
+                )
+            if len(rows) > len(sample):
+                lines.append("")
+                lines.append(
+                    f"*Showing {len(sample)} of {len(rows)} entities "
+                    f"(full graph: `entity_graph.html` / state).*"
+                )
+            lines.append("")
+        return lines
+
     # ── Entity Graph HTML (pyvis) ──────────────────────────────────────────────
 
     def _entity_graph_html(self, state: dict[str, Any]) -> str:
@@ -2453,6 +2551,9 @@ class ReportEngine:
             "- **Audit chain:** see `logs/audit_log.jsonl` (hash-chained per tool call)",
             "",
         ])
+        # NEX-19 / P4.14: surface per-entity ProvenanceRecord coverage from
+        # the Living Graph (not just campaign/audit metadata).
+        lines.extend(self._entity_provenance_section(state))
 
         # Section 10: Recommendations (split out from agent's body_md so it
         # lands in numerical order, after Section 9 Evidence).

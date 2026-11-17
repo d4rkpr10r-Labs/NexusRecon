@@ -66,7 +66,7 @@ Competitors already win on raw discovery yield (BBOT recursion, Amass asset DB d
 | Lifecycle | Assessment |
 |-----------|------------|
 | Discovery/coverage | Strong passive footprint tooling; recursive depth weaker than BBOT |
-| Attribution / entity resolution | Graph merge + identity helpers present; provenance writers incomplete |
+| Attribution / entity resolution | Graph merge + identity helpers; provenance writers on default path (NEX-19); evidence_hash join deferred |
 | Evidence / confidence | Audit + citations; Continuous Confidence unwired; LLM evidence often `unverified` |
 | Hypotheses / investigation planning | Hypothesis/lead entities + correlator; Intent planner exists as CLI island |
 | Prioritization | Phase 8 ranking works on default path |
