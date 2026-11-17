@@ -55,7 +55,7 @@ Competitors already win on raw discovery yield (BBOT recursion, Amass asset DB d
 - **Persistence contract:** `campaign_runner` swallows `save_state` / `begin_phase` / `end_phase` exceptions (`except Exception: pass`), so operators can finish “successfully” with a stale checkpoint.
 - **Registry isolation:** process-global `@lru_cache` singleton; `clear_campaign_context` never clears `_proxy_manager` (dead assignment after `return` in `audit_log` property). Concurrent or sequential campaigns can leak OPSEC routing.
 - **Watch:** sensors fingerprint graphs loaded from frozen `state.json` (`watch/runner.py::_default_graph_loader`). Without re-collection, continuous monitoring is structurally a no-op after the first non-trivial tick settles—ROADMAP Demoted is correct; ARCHITECTURE §18 still reads “live.”
-- **Verification:** `VerificationOrchestrator` constructed only in unit tests—not on default run. `from_state` keeps a single source string for subdomains, weakening corroboration priors.
+- **Verification:** Opt-in via `--verify` / `NEXUS_ENABLE_VERIFY` (NEX-13); still off on default run. Multi-source `from_state` restored in NEX-8.
 - **Strategy framing:** `kill_criteria` / `success_criteria` / `tool_budgets` authored into `Strategy` objects but not enforced on the run path; simulation often reports `$0.00` when `cost_per_run_usd` unset (ROADMAP Demoted).
 - **Packaging:** wheel omits `scripts/nexusrecon-verify.py` and first-party `packs/burp`; only `nexusrecon/packs` loader code ships. Editable checkout ≠ installed product.
 - **STIX secret mapper:** `_map_secret` embeds `entity["value"]` in `content` (confirmed leak of `AKIA…` in bundle JSON); unit test only asserts abstract contains “redacted.”

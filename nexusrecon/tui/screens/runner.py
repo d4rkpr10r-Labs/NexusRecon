@@ -525,6 +525,9 @@ class RunnerScreen(Screen):
                 "validate_credentials": self.validate_creds,
                 "generate_phishing_drafts": self.generate_phishing,
                 "dispatch_mode": self.dispatch_mode,
+                "enable_verify": bool(
+                    getattr(get_config(), "enable_verify", False)
+                ),
                 "llm_cost_usd": 0.0,
                 "max_llm_cost_usd": getattr(
                     scope_model.constraints, "max_llm_cost_usd", 10.0,

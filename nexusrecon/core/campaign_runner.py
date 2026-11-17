@@ -238,6 +238,24 @@ async def run_campaign(
                 "timestamp": datetime.utcnow().isoformat(),
             })
 
+            # NEX-13: Continuous Confidence boundary pass when opted in.
+            # phase4 / phase8 already attach during EntityGraph.from_state;
+            # this re-runs adversarial + health against the serialized
+            # graph so later phases that only touch entity_graph dicts
+            # still refresh weak_links / verification_health.
+            if s.get("enable_verify") and (s.get("entity_graph") or {}).get("nodes"):
+                try:
+                    from nexusrecon.verification.setup import (
+                        verify_campaign_graph,
+                    )
+                    verify_campaign_graph(
+                        s, audit_log=getattr(campaign, "audit_log", None),
+                    )
+                except Exception as ver_err:
+                    s.setdefault("errors", []).append(
+                        f"{phase_id}/verify: {ver_err}"
+                    )
+
             # Reflection / dispatcher between phases (gated by dispatch_mode).
             try:
                 prior_dispatches = len(s.get("dispatch_log", []) or [])

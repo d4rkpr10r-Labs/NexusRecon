@@ -70,8 +70,9 @@ loop, treat the rest as roadmap), Recon Packs + Contribution SDK
 on the default load path), Watch Mode (snapshot-diff of frozen
 `state.json`, not live monitoring), Vision (standalone CLI; default
 `vision_calls` budget 0), and the **Continuous Confidence Engine**
-(`nexusrecon/verification/` — unit-tested, not constructed on a
-default run). See ARCHITECTURE.md §§14–18, 21 and ROADMAP demotions.
+(`nexusrecon/verification/` — opt-in via `--verify` /
+`NEXUS_ENABLE_VERIFY`; off by default). See ARCHITECTURE.md §§14–18, 21
+and ROADMAP demotions.
 
 ---
 
@@ -300,12 +301,13 @@ nexusrecon resume nr-20260514-120000-abc12345
 | **Adversarial defense** | `nexusrecon adversarial scan` / `scan-text` | `scan` runs three graph detectors (poisoned data, suspicious tool-call patterns, evidence inconsistency); `scan-text` runs the prompt-injection scanner on a text input (regex + structural, LLM classifier opt-in). |
 
 The four verifier rows above (Corroboration engine, Contradiction detector,
-Confidence propagation, Adversarial self-check) are **experimental and
-opt-in**: they live in `nexusrecon/verification/` and are unit-tested, but a
-default `nexusrecon run` does not construct the orchestrator, so they do not
-run on a normal campaign. See ARCHITECTURE.md section 14 and ROADMAP item 8.
-(`Adversarial defense` above is a separate, real CLI command and does run when
-invoked.)
+Confidence propagation, Adversarial self-check) are **opt-in** via
+`nexusrecon run --verify` or `NEXUS_ENABLE_VERIFY=1` (NEX-13). Off by default:
+a normal `nexusrecon run` does not construct the orchestrator. When enabled,
+`EntityGraph.from_state` attaches `VerificationOrchestrator` so multi-source
+merges fire corroboration / contradiction / propagation, and phase boundaries
+refresh `verification_health` / `weak_links`. See ARCHITECTURE.md section 14.
+(`Adversarial defense` above is a separate CLI command and runs when invoked.)
 
 ### Interop + distribution
 
@@ -501,8 +503,7 @@ What's demoted / experimental (in-tree; not default-run product):
   monitoring
 - Vision pipeline — standalone CLI; default budget 0; campaign does
   not feed it
-- Continuous Confidence Engine — unit-tested, not wired into a
-  default run (ROADMAP item 8)
+- Continuous Confidence Engine — opt-in via `--verify` / `NEXUS_ENABLE_VERIFY`; off by default
 - Downstream emitters/importers — post-run manual; STIX path kept
 
 What's still moving / design-only:

@@ -70,7 +70,7 @@ Default campaign tooling, graph merge, reporting, and unit/integration suites ar
 ### F-007 — Continuous Confidence unwired
 - **Severity:** Low as dormancy; Medium as marketing risk
 - **Evidence:** `VerificationOrchestrator(` only in tests; README/ARCHITECTURE agree experimental.
-- **Fix:** None (intentional). Align remaining ARCHITECTURE planner-bias language.
+- **Fix:** Applied (NEX-13) — opt-in via `nexusrecon run --verify` / `NEXUS_ENABLE_VERIFY`; `EntityGraph.from_state` attaches orchestrator; campaign_runner refreshes health at phase boundaries. Still off by default.
 
 ### F-008 — Strategy criteria unread / simulation $0
 - **Severity:** Medium (misleading Strategy product)

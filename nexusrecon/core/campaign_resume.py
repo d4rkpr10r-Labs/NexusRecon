@@ -143,6 +143,7 @@ def hydrate_runner_state(
         "strategy": state_data.get("strategy"),
         "dispatch_policy_name": state_data.get("dispatch_policy_name"),
         "mode": state_data.get("mode"),
+        "enable_verify": bool(state_data.get("enable_verify", False)),
     }
 
 

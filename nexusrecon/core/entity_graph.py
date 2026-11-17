@@ -1090,6 +1090,18 @@ class EntityGraph:
             campaign_id=campaign_id or state.get("campaign_id", ""),
             engagement_id=engagement_id or state.get("engagement_id", ""),
         )
+        # NEX-13 / F-007: when Continuous Confidence is opted in, attach
+        # the orchestrator *before* materialising entities so multi-source
+        # merges fire corroboration / contradiction / propagation.
+        if state.get("enable_verify"):
+            try:
+                from nexusrecon.verification.setup import (
+                    attach_continuous_confidence,
+                )
+                attach_continuous_confidence(g, state)
+            except Exception:
+                # Verify failures must never break graph rebuild.
+                pass
         # Id maps so later passes can draw real edges between entities (the
         # graph was previously an edge-poor dedup bag; these let us connect
         # subdomains to their domain, to their resolved IPs and technologies,
@@ -1348,6 +1360,18 @@ class EntityGraph:
                 from nexusrecon.core.relationship_graph import RelationshipGraph
                 rg = RelationshipGraph.from_dict(relationship_graph_dict)
                 g.merge_relationship_graph(rg)
+            except Exception:
+                pass
+
+        # NEX-13: adversarial self-check + health snapshot once the
+        # graph is fully materialised (mutation-driven verifiers already
+        # ran during the adds above when enable_verify was set).
+        if state.get("enable_verify"):
+            try:
+                from nexusrecon.verification.setup import (
+                    run_boundary_verification,
+                )
+                run_boundary_verification(g, state)
             except Exception:
                 pass
 
