@@ -81,7 +81,7 @@ Default campaign tooling, graph merge, reporting, and unit/integration suites ar
 ### F-009 — Verifier script absent from wheel
 - **Severity:** Medium (handoff incomplete when installed)
 - **Evidence:** Pre-repair wheel lacked `nexusrecon-verify.py`.
-- **Fix:** Applied — `nexusrecon/assets/nexusrecon-verify.py` + package-data; unit test.
+- **Fix:** Applied — `nexusrecon/assets/nexusrecon-verify.py` + package-data; unit test. Console entry `nexusrecon-verify` (NEX-16) runs/extracts the asset via `nexusrecon.cli.verify_entry`.
 - **Residual:** First-party `packs/burp` still not in wheel (demoted packs).
 
 ### F-010 — Docs maturity overclaim

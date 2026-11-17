@@ -24,7 +24,7 @@ Ordered by dependency. Items marked **done-on-branch** are in `cursor/assurance-
 
 ## P3 — Interop / packaging
 
-11. **Ship `nexusrecon-verify` console entry** that extracts/runs the packaged asset (asset already on branch).
+11. **Ship `nexusrecon-verify` console entry** that extracts/runs the packaged asset — *done (NEX-16)*.
 12. **Decide packs/burp load path** — include in wheel or stop advertising packs as stable.
 13. **Fresh-VM / PyPI install matrix** (ROADMAP open item).
 
