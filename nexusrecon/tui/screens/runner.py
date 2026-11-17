@@ -1057,8 +1057,18 @@ class RunnerScreen(Screen):
         """Live filter — update the rendered activity on every
         keystroke. Substring is computed in O(n) over the
         capped 2000-line buffer; ~150 µs in practice, well below
-        the 50 ms perceived-latency target."""
+        the 50 ms perceived-latency target.
+
+        When the filter bar is hidden (``action_clear_filter``),
+        ignore stale ``Changed`` events that can still arrive from
+        an earlier ``inp.value = …`` assignment — Textual may
+        deliver them after clear on some event-loop timings
+        (observed on py3.13)."""
         if event.input.id != "runner-filter":
+            return
+        if "runner-filter-hidden" in event.input.classes:
+            self._filter_text = ""
+            self._refresh_activity_render()
             return
         self._filter_text = event.value or ""
         self._refresh_activity_render()
