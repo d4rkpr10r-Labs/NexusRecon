@@ -651,102 +651,51 @@ def resume(campaign_id: str = typer.Argument(..., help="Campaign ID to resume"))
     """Resume a campaign from its last checkpoint via the shared campaign runner."""
     console.print(f"[bold green]Resuming campaign[/bold green] [cyan]{campaign_id}[/cyan]")
 
-    # Find campaign directory by scanning output dirs
+    from nexusrecon.core.campaign_resume import (
+        ResumeError,
+        find_campaign_dir,
+        hydrate_runner_state,
+        load_resume_context,
+        prepare_resume_campaign,
+    )
+    from nexusrecon.core.campaign_runner import run_campaign
+    from nexusrecon.opsec.setup import ProxyRequiredError, bind_campaign_opsec
+    from nexusrecon.tools.registry import get_registry
+
     config = get_config()
     output_dir = Path(config.output_dir)
-
-    state_path = None
-    scope_meta_path = None
-    for campaign_dir in output_dir.rglob(campaign_id):
-        if campaign_dir.is_dir():
-            candidate = campaign_dir / "state.json"
-            if candidate.exists():
-                state_path = candidate
-                scope_meta_path = campaign_dir / "scope_metadata.json"
-                break
-
-    if not state_path:
+    campaign_dir = find_campaign_dir(campaign_id, output_dir)
+    if not campaign_dir:
         console.print(f"[bold red]Campaign {campaign_id} not found in {output_dir}[/bold red]")
         raise typer.Exit(1)
 
-    # Load state
-    state_data = json.loads(state_path.read_text(encoding="utf-8"))
-    completed = set(state_data.get("completed_phases", []))
-    current = state_data.get("current_phase", "phase1")
+    try:
+        ctx = load_resume_context(campaign_dir)
+    except ResumeError as exc:
+        console.print(f"[bold red]Cannot load campaign for resume:[/bold red] {exc}")
+        raise typer.Exit(1)
+
+    completed = set(ctx.completed_phases)
+    current = ctx.current_phase
+    state_data = ctx.state_data
 
     console.print(f"Completed phases: {', '.join(sorted(completed)) or '(none)'}")
     console.print(f"Current phase: {current}")
     console.print(f"Findings so far: {len(state_data.get('findings', []))}")
 
-    scope_meta: dict = {}
-    if scope_meta_path and scope_meta_path.exists():
-        scope_meta = json.loads(scope_meta_path.read_text(encoding="utf-8"))
-        console.print(f"Client: {scope_meta.get('engagement', {}).get('client', 'unknown')}")
-        console.print(f"Max Tier: {scope_meta.get('constraints', {}).get('max_tier', 'T0')}")
-
-    # Prefer the original scope YAML so resume shares run()'s ScopeGuard + OPSEC bind.
-    scope_model: ScopeModel | None = None
-    scope_file = scope_meta.get("scope_file_path")
-    if scope_file and Path(scope_file).exists():
-        try:
-            scope_model = ScopeModel.from_yaml(scope_file)
-        except Exception as exc:
-            console.print(f"[yellow]Could not reload scope file {scope_file}: {exc}[/yellow]")
-
-    if scope_model is None:
-        # Reconstruct a minimal ScopeModel from metadata so run_campaign can
-        # enforce tier floors. Full in-scope lists may be incomplete without
-        # the original YAML — operators should keep the scope file available.
-        try:
-            engagement = dict(scope_meta.get("engagement") or {})
-            engagement.setdefault("client", "unknown")
-            engagement.setdefault(
-                "engagement_id", state_data.get("engagement_id") or "unknown",
-            )
-            engagement.setdefault("authorized_by", "resume")
-            engagement.setdefault("authorization_date", "1970-01-01")
-            engagement.setdefault("start_date", "1970-01-01")
-            engagement.setdefault("end_date", "2099-01-01")
-            engagement.setdefault(
-                "signed_sow_hash",
-                "sha256:" + ("0" * 64),
-            )
-            scope_model = ScopeModel.model_validate({
-                "engagement": engagement,
-                "constraints": scope_meta.get("constraints") or {},
-            })
-            scope_model.scope_hash = scope_meta.get("scope_hash") or state_data.get("scope_hash")
-        except Exception as exc:
-            console.print(f"[bold red]Cannot reconstruct scope for resume:[/bold red] {exc}")
-            raise typer.Exit(1)
-
-    from nexusrecon.core.campaign_runner import run_campaign
-    from nexusrecon.opsec.setup import ProxyRequiredError, bind_campaign_opsec
-    from nexusrecon.tools.registry import get_registry
-
-    mode_raw = str(state_data.get("mode") or "medium").lower()
-    try:
-        campaign_mode = CampaignMode(mode_raw)
-    except ValueError:
-        campaign_mode = CampaignMode.MEDIUM
-
-    campaign = CampaignManager(
-        scope=scope_model,
-        mode=campaign_mode,
-        campaign_id=campaign_id,
+    e = ctx.scope_model.engagement
+    console.print(f"Client: {getattr(e, 'client', 'unknown')}")
+    console.print(
+        f"Max Tier: {getattr(ctx.scope_model.constraints, 'max_tier', 'T0')}"
     )
-    # Point campaign_dir at the discovered path (rglob) rather than assuming
-    # the reconstructed client/engagement path still matches.
-    campaign.campaign_dir = state_path.parent
-    campaign.report_dir = campaign.campaign_dir / "reports"
-    campaign.artifacts_dir = campaign.campaign_dir / "artifacts"
-    campaign.logs_dir = campaign.campaign_dir / "logs"
+
     try:
-        campaign.setup()
+        campaign = prepare_resume_campaign(ctx)
     except Exception as e:
         console.print(f"[bold red]Campaign setup failed:[/bold red] {e}")
         raise typer.Exit(1)
 
+    scope_model = ctx.scope_model
     scope_guard = ScopeGuard(scope_model)
     try:
         bind_campaign_opsec(
@@ -759,35 +708,7 @@ def resume(campaign_id: str = typer.Argument(..., help="Campaign ID to resume"))
 
     console.print("\n[bold green]Continuing campaign execution via shared runner...[/bold green]")
 
-    state = {
-        "campaign_id": state_data.get("campaign_id", campaign_id),
-        "engagement_id": state_data.get("engagement_id", ""),
-        "scope_hash": state_data.get("scope_hash", ""),
-        "seeds": state_data.get("seeds", []),
-        "completed_phases": list(completed),
-        "current_phase": current,
-        "findings": state_data.get("findings", []),
-        "subdomain_intel": state_data.get("subdomain_intel", {}),
-        "email_intel": state_data.get("email_intel", {"emails": {}}),
-        "cloud_intel": state_data.get("cloud_intel", {}),
-        "code_intel": state_data.get("code_intel", {}),
-        "infra_intel": state_data.get("infra_intel", {}),
-        "domain_intel": state_data.get("domain_intel", {}),
-        "vuln_intel": state_data.get("vuln_intel", {}),
-        "pretext_intel": state_data.get("pretext_intel", {}),
-        "entity_graph": state_data.get("entity_graph", {}),
-        "hypotheses": state_data.get("hypotheses", []),
-        "confirmed_leads": state_data.get("confirmed_leads", []),
-        "llm_cost_usd": state_data.get("llm_cost_usd", 0.0),
-        "tool_cost_usd": state_data.get("tool_cost_usd", 0.0),
-        "step_count": state_data.get("step_count", 0),
-        "errors": state_data.get("errors", []),
-        "agent_messages": state_data.get("agent_messages", []),
-        "report_paths": {},
-        "dispatch_mode": state_data.get("dispatch_mode", "lite"),
-        "strategy": state_data.get("strategy"),
-        "dispatch_policy_name": state_data.get("dispatch_policy_name"),
-    }
+    state = hydrate_runner_state(state_data, campaign_id=campaign_id)
 
     try:
         with Progress(
