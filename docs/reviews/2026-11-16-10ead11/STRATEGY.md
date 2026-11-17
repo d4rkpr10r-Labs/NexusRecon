@@ -57,7 +57,7 @@ Competitors already win on raw discovery yield (BBOT recursion, Amass asset DB d
 - **Watch:** sensors fingerprint graphs loaded from frozen `state.json` (`watch/runner.py::_default_graph_loader`). Without re-collection, continuous monitoring is structurally a no-op after the first non-trivial tick settles—ROADMAP Demoted is correct; ARCHITECTURE §18 still reads “live.”
 - **Verification:** Opt-in via `--verify` / `NEXUS_ENABLE_VERIFY` (NEX-13); still off on default run. Multi-source `from_state` restored in NEX-8.
 - **Strategy framing:** `kill_criteria` / `success_criteria` demoted from planner prompts (NEX-15); only `dispatch_policy_name` + `vision_calls` budget enforced; simulation often reports `$0.00` when `cost_per_run_usd` unset.
-- **Packaging:** wheel omits `scripts/nexusrecon-verify.py` and first-party `packs/burp`; only `nexusrecon/packs` loader code ships. Editable checkout ≠ installed product.
+- **Packaging:** verifier asset + `nexusrecon-verify` console entry ship in the wheel (NEX-16); first-party `packs/burp` still omitted. Editable checkout ≠ installed product for packs.
 - **STIX secret mapper:** `_map_secret` embeds `entity["value"]` in `content` (confirmed leak of `AKIA…` in bundle JSON); unit test only asserts abstract contains “redacted.”
 - **Scale envelope (inspection, not measured at 100k):** in-process NetworkX + full `state.json` serialize implies soft envelope ~1k–10k entities on a laptop before memory/export cost dominates; 100k needs shard/index strategy (not prescribed here).
 

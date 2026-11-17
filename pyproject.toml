@@ -115,6 +115,7 @@ tls = ["curl_cffi>=0.7.0"]
 
 [project.scripts]
 nexusrecon = "nexusrecon.cli.main:app"
+nexusrecon-verify = "nexusrecon.cli.verify_entry:main"
 
 [project.entry-points."nexusrecon.tools"]
 crtsh = "nexusrecon.tools.domain.crtsh_tool:CRTShTool"

@@ -230,8 +230,12 @@ nexusrecon export <campaign-id> --format stix2
 nexusrecon keys generate corp-red-team-2026
 nexusrecon sign <campaign-id> --key-id corp-red-team-2026
 
-# Verify a bundle (no NexusRecon install required:
-# scripts/nexusrecon-verify.py is a standalone script)
+# Verify a signed bundle (installed console entry OR standalone script)
+nexusrecon-verify --bundle stix2-bundle.json \
+  --receipt stix2-bundle.json.receipt.json --public-key corp.pub.pem
+# Extract the cryptography-only script for auditors without NexusRecon:
+nexusrecon-verify --extract ./nexusrecon-verify.py
+# In-package crypto verify (same receipt schema):
 nexusrecon verify stix2-bundle.json stix2-bundle.json.receipt.json corp.pub.pem
 
 # Continuously monitor a campaign for material changes
@@ -314,7 +318,7 @@ refresh `verification_health` / `weak_links`. See ARCHITECTURE.md section 14.
 | Capability | Surface | What it does |
 |------------|---------|--------------|
 | **STIX 2.1 export** | `nexusrecon export … --format stix2` | EntityGraph → STIX Bundle. Stdlib-only serializer. Identity / Vulnerability / Infrastructure / Note SDOs; Domain / IP / Email / URL SCOs (spec-correct observable types). |
-| **Signed bundles** | `nexusrecon sign / verify` + standalone script | Ed25519, passphrase-encrypted PEM keys, single-file verifier (`scripts/nexusrecon-verify.py`) that needs only `cryptography`. |
+| **Signed bundles** | `nexusrecon sign / verify` + `nexusrecon-verify` | Ed25519, passphrase-encrypted PEM keys. Console entry `nexusrecon-verify` runs/extracts the packaged cryptography-only asset (also at `scripts/nexusrecon-verify.py`). |
 | **Bidirectional import** | `nexusrecon ingest stix/nessus/nuclei/csv` | Folds partner STIX bundles, Nessus XML, Nuclei JSON-lines, and generic CSV asset inventories into the campaign graph. |
 | **Downstream emitters** | `--format jira / nuclei-targets / cobaltstrike-profile` | Jira REST NDJSON, Nuclei `-list` targets, Cobalt Strike Malleable C2 profile stub (with explicit "review before deploying" warning). |
 | **Watch mode** _(snapshot-diff)_ | `nexusrecon watch` | Fingerprints frozen `state.json` via Entity/Scope/Timed sensors. Digests change only after a new campaign run. Tiered actions: low→alert, medium→notification, high→queued micro-campaign. Not live re-collection (F-006). |

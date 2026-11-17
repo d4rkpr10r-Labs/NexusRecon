@@ -1096,12 +1096,15 @@ single-file verifier.
   bundle hash match, signature verify). Optional
   `expected_key_id` + `expected_fingerprint` pins fail loudly
   when an auditor's known-good signer doesn't match.
-- **Standalone verifier**: `scripts/nexusrecon-verify.py` is a
-  ~250-line single file that depends ONLY on `cryptography`.
-  Auditors download one file + verify; no NexusRecon install
-  required.
+- **Standalone verifier**: `nexusrecon/assets/nexusrecon-verify.py`
+  (also mirrored at `scripts/nexusrecon-verify.py`) is a ~250-line
+  single file that depends ONLY on `cryptography`. After install,
+  `nexusrecon-verify` on PATH runs that asset; `nexusrecon-verify
+  --extract [PATH]` writes it out for auditors without a NexusRecon
+  install (NEX-16).
 - **CLI.** `nexusrecon keys generate / list / export-public`,
-  `nexusrecon sign`, `nexusrecon verify`.
+  `nexusrecon sign`, `nexusrecon verify`, plus console entry
+  `nexusrecon-verify`.
 
 ---
 
