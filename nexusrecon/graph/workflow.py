@@ -1,8 +1,13 @@
 """
 LangGraph workflow builder — constructs the campaign execution graph.
 
-Builds a StateGraph with phase nodes, a reflection node between phases,
-and SQLite checkpointing for resume capability.
+Builds a StateGraph with the same phase set as ``campaign_runner.run_campaign``
+and an optional in-process MemorySaver. Durable cross-process resume remains
+``nexusrecon resume`` / ``state.json`` on the default runner (F-014).
+
+``--use-graph`` is an experimental alternate engine: same phase nodes and
+registry OPSEC context (bound by the CLI before invoke), not a second
+product spine with its own resume story.
 """
 
 from __future__ import annotations
@@ -67,14 +72,12 @@ PHASE_NODES = {
 
 
 def build_campaign_workflow(
-    db_path: str = ":memory:",
     mode: CampaignMode = CampaignMode.MEDIUM,
 ) -> StateGraph:
     """
     Build the LangGraph StateGraph for a NexusRecon campaign.
 
     Args:
-        db_path: SQLite path for checkpointing. Use ":memory:" for ephemeral.
         mode: Campaign mode — controls which phases are included (F-009).
     """
     tier_limit = MODE_TIER_LIMITS.get(mode, 3)
@@ -111,28 +114,43 @@ def build_campaign_workflow(
     return workflow
 
 
+def _compile_app(workflow: StateGraph, *, thread_id: str):
+    """Compile with in-process MemorySaver when available.
+
+    F-014: the previous SqliteSaver path imported
+    ``langgraph.checkpoint.sqlite`` (not a declared dependency) and never
+    passed ``configurable.thread_id``, so the checkpointer was dead code.
+    MemorySaver + thread_id is honest for a single process; durable resume
+    stays on ``state.json`` / ``nexusrecon resume``.
+    """
+    config = {"configurable": {"thread_id": thread_id or "nexusrecon"}}
+    try:
+        from langgraph.checkpoint.memory import MemorySaver
+
+        app = workflow.compile(checkpointer=MemorySaver())
+        return app, config
+    except Exception:
+        return workflow.compile(), config
+
+
 async def run_workflow(
     state: dict[str, Any],
-    db_path: str = ":memory:",
     mode: CampaignMode = CampaignMode.MEDIUM,
+    *,
+    thread_id: str | None = None,
 ) -> dict[str, Any]:
     """
-    Convenience: compile and run the campaign workflow with the given initial state.
+    Compile and run the campaign workflow with the given initial state.
+
     Returns the final state after all phases complete (or error).
     """
-    workflow = build_campaign_workflow(db_path=db_path, mode=mode)
-
-    # F-005: add SqliteSaver checkpointer so LangGraph can persist and resume state
-    try:
-        from langgraph.checkpoint.sqlite import SqliteSaver
-        checkpointer = SqliteSaver.from_conn_string(db_path)
-        app = workflow.compile(checkpointer=checkpointer)
-    except Exception:
-        app = workflow.compile()
+    workflow = build_campaign_workflow(mode=mode)
+    tid = thread_id or str(state.get("campaign_id") or "nexusrecon")
+    app, config = _compile_app(workflow, thread_id=tid)
 
     current = dict(state)
 
-    async for event in app.astream(current):
+    async for event in app.astream(current, config):
         for node_name, node_state in event.items():
             if isinstance(node_state, dict):
                 current.update(node_state)

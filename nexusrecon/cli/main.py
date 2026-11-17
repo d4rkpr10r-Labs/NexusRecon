@@ -160,7 +160,15 @@ def run(
     mode: str = typer.Option("medium", "--mode", "-m", help="Campaign mode: light, medium, deep, monitor"),
     resume: str | None = typer.Option(None, "--resume", "-r", help="Resume a campaign by ID"),
     dry_run: bool = typer.Option(False, "--dry-run", help="Validate scope and plan without running tools"),
-    use_graph: bool = typer.Option(False, "--use-graph", help="Use LangGraph workflow engine"),
+    use_graph: bool = typer.Option(
+        False,
+        "--use-graph",
+        help=(
+            "Experimental: run phases via LangGraph (same phase set + "
+            "registry OPSEC). Durable resume still uses state.json / "
+            "`nexusrecon resume`, not the graph checkpointer."
+        ),
+    ),
     validate_creds: bool = typer.Option(False, "--validate-creds", help="Validate harvested credentials via read-only API calls (AWS sts, GitHub /user, etc.). Off by default."),
     generate_phishing: bool = typer.Option(False, "--generate-phishing", help="Generate per-target phishing email drafts. Authorized engagements only."),
     dispatch_mode: str = typer.Option("lite", "--dispatch-mode", help="Dynamic dispatch mode: lite (default), full, or off."),
@@ -501,9 +509,20 @@ def run(
         ) as progress:
             if use_graph:
                 from nexusrecon.graph.workflow import run_workflow
+                console.print(
+                    "[yellow]--use-graph is experimental[/yellow]: same phase "
+                    "nodes and OPSEC bind as the default runner; cross-process "
+                    "resume remains `nexusrecon resume` (state.json)."
+                )
                 task = progress.add_task("Running LangGraph campaign workflow...", total=None)
                 try:
-                    state = asyncio.run(run_workflow(state))
+                    state = asyncio.run(
+                        run_workflow(
+                            state,
+                            mode=campaign_mode,
+                            thread_id=str(campaign.campaign_id),
+                        )
+                    )
                     progress.update(task, description="[green]Complete: LangGraph workflow finished[/green]")
                 except Exception as e:
                     state["errors"].append(f"workflow: {str(e)}")
