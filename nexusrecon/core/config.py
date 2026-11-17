@@ -119,6 +119,11 @@ class NexusConfig(BaseSettings):
     log_level: str = Field(default="INFO", alias="NEXUS_LOG_LEVEL")
     log_format: str = Field(default="json", alias="NEXUS_LOG_FORMAT")
     dry_run: bool = Field(default=False, alias="NEXUS_DRY_RUN")
+    # When true, run_campaign stops the phase loop if save_state fails
+    # (see --abort-on-checkpoint-failure). Default keeps warn-and-continue.
+    abort_on_checkpoint_failure: bool = Field(
+        default=False, alias="NEXUS_ABORT_ON_CHECKPOINT_FAILURE",
+    )
 
     def get_secret(self, field_name: str) -> str | None:
         """Safely retrieve a secret value by field name.
