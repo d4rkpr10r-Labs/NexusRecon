@@ -708,16 +708,16 @@ architecture lock-in during Phase 0.1); a graph database backend
 
 ## 14. Continuous Confidence Engine (Phase 2)
 
-**Status (2026-06-09): experimental, in-tree, opt-in, and not wired
-into the default run.** The design below is fully implemented in
-`nexusrecon/verification/` and unit-tested, but nothing in a default
-`nexusrecon run` constructs the orchestrator or registers the mutation
-listener, so no corroboration, contradiction, propagation, or
-self-check runs on a normal campaign. Promoting it (ROADMAP item 8
-option a) also requires fixing `from_state` source strings to match
-`SOURCE_INDEPENDENCE_CLASSES` and giving derived entities sub-1.0
-confidence priors, or corroboration silently no-ops against the 0.99
-cap. This section documents the capability as built.
+**Status (2026-11-17 / NEX-13): experimental, in-tree, opt-in via
+`nexusrecon run --verify` / `NEXUS_ENABLE_VERIFY`.** The design below is
+fully implemented in `nexusrecon/verification/` and unit-tested. A
+default `nexusrecon run` still does **not** construct the orchestrator
+(off by default). When `--verify` is set, `EntityGraph.from_state`
+attaches `VerificationOrchestrator` before materialising entities, and
+`run_campaign` refreshes adversarial self-check +
+`verification_health` at phase boundaries that carry an entity graph.
+Multi-source `from_state` restore (NEX-8 / F-011) is a prerequisite so
+corroboration sees distinct independence classes after resume.
 
 **Problem.** Confidence on entities was hand-set by tool wrappers
 and never re-evaluated. New corroborating evidence didn't lift

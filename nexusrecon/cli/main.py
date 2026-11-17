@@ -200,6 +200,16 @@ def run(
             "Also honored via NEXUS_ABORT_ON_CHECKPOINT_FAILURE=1."
         ),
     ),
+    verify: bool = typer.Option(
+        False,
+        "--verify",
+        help=(
+            "Opt-in Continuous Confidence: attach VerificationOrchestrator "
+            "during EntityGraph builds (corroboration / contradiction / "
+            "propagation + adversarial self-check). Off by default. "
+            "Also honored via NEXUS_ENABLE_VERIFY=1."
+        ),
+    ),
 ) -> None:
     """
     Launch a NexusRecon reconnaissance campaign.
@@ -442,6 +452,9 @@ def run(
             abort_on_checkpoint_failure
             or getattr(get_config(), "abort_on_checkpoint_failure", False)
         ),
+        "enable_verify": bool(
+            verify or getattr(get_config(), "enable_verify", False)
+        ),
         "llm_cost_usd": 0.0,
         "max_llm_cost_usd": getattr(scope_model.constraints, "max_llm_cost_usd", 10.0),
         "tool_cost_usd": 0.0,
@@ -473,6 +486,7 @@ def run(
                     "pretext_targets",
                     "max_llm_cost_usd",
                     "abort_on_checkpoint_failure",
+                    "enable_verify",
                 }
                 for key, value in prior.items():
                     if key in preserve:
@@ -485,6 +499,9 @@ def run(
                 state["abort_on_checkpoint_failure"] = bool(
                     abort_on_checkpoint_failure
                     or getattr(get_config(), "abort_on_checkpoint_failure", False)
+                )
+                state["enable_verify"] = bool(
+                    verify or getattr(get_config(), "enable_verify", False)
                 )
                 state["dispatch_mode"] = (
                     dispatch_mode if dispatch_mode in ("lite", "full", "off") else "lite"

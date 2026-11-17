@@ -78,6 +78,13 @@ from nexusrecon.verification.propagation import (
     PropagationStep,
     PropagationVerdict,
 )
+from nexusrecon.verification.setup import (
+    attach_continuous_confidence,
+    build_default_orchestrator,
+    is_verify_enabled,
+    run_boundary_verification,
+    verify_campaign_graph,
+)
 
 __all__ = [
     "AdversarialReport",
@@ -95,6 +102,11 @@ __all__ = [
     "VerificationOrchestrator",
     "Verifier",
     "WeakLink",
+    "attach_continuous_confidence",
+    "build_default_orchestrator",
     "compute_verification_health",
+    "is_verify_enabled",
     "resolve_contradiction",
+    "run_boundary_verification",
+    "verify_campaign_graph",
 ]

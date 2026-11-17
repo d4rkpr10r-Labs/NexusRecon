@@ -124,6 +124,13 @@ class NexusConfig(BaseSettings):
     abort_on_checkpoint_failure: bool = Field(
         default=False, alias="NEXUS_ABORT_ON_CHECKPOINT_FAILURE",
     )
+    # Opt-in Continuous Confidence (NEX-13 / F-007). When true, campaign
+    # runs attach VerificationOrchestrator during EntityGraph.from_state
+    # and write verification_log / weak_links / verification_health.
+    # Also honored via CLI ``nexusrecon run --verify``.
+    enable_verify: bool = Field(
+        default=False, alias="NEXUS_ENABLE_VERIFY",
+    )
 
     def get_secret(self, field_name: str) -> str | None:
         """Safely retrieve a secret value by field name.
