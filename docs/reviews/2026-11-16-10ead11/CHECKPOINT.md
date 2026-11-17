@@ -43,5 +43,5 @@ Incorporated [Map architecture & leads](bc-bbed39bb-848c-5200-8b2c-e20f1e027759)
 1. Human review of local branch repairs; push only if owner lifts REPAIR_MODE publish ban.
 2. README Status honesty pass (BACKLOG P0.3).
 3. `from_state` multi-source restore (P0.4).
-4. Watch re-collect slice or permanent relabel (P2.9).
+4. Watch re-collect slice or permanent relabel (P2.9) — honesty relabel done (NEX-14); re-collect deferred.
 5. TUI true resume (F-013) — done (NEX-12).

@@ -5,6 +5,14 @@ Public entry points
 - :func:`tick(watch_id)` — run one pass.
 - :func:`list_watches()` — enumerate configured watches.
 
+**Mode (NEX-14 / F-006):** the default (and only supported)
+loader rebuilds the campaign graph from frozen ``state.json``.
+``tick`` therefore performs a **snapshot-diff** — fingerprints
+change only after a new campaign run rewrites the checkpoint.
+It is not live continuous monitoring. A future ``recollect``
+mode may re-run seed collectors before fingerprinting; that
+path is not wired yet.
+
 The runner deliberately does NOT loop. The operator either
 calls ``tick`` from cron / systemd timer (the typical
 deployment) or wraps it in a sleep loop themselves. Keeping
@@ -49,6 +57,9 @@ class TickResult:
 
     watch_id: str
     timestamp: str
+    mode: str = "snapshot"
+    """Effective graph source: always ``snapshot`` today (frozen
+    state.json). Surfaced so CLI/operators see the honesty label."""
     sensors_evaluated: int = 0
     sensors_fired: int = 0
     actions: list[ActionResult] = field(default_factory=list)
@@ -58,6 +69,7 @@ class TickResult:
         return {
             "watch_id": self.watch_id,
             "timestamp": self.timestamp,
+            "mode": self.mode,
             "sensors_evaluated": self.sensors_evaluated,
             "sensors_fired": self.sensors_fired,
             "actions": [a.action.to_dict() for a in self.actions],
@@ -84,13 +96,16 @@ def tick(
     ``(campaign_id) -> EntityGraph`` so tests can swap in a
     fake without touching the campaign filesystem.
     Production callers leave it ``None`` to use the default
-    state.json loader.
+    frozen-``state.json`` snapshot loader.
     """
+    from nexusrecon.watch.storage import WATCH_MODE_SNAPSHOT
+
     now = now or datetime.now(UTC)
     storage = WatchStorage(watch_id, root=watch_root)
     result = TickResult(
         watch_id=watch_id,
         timestamp=now.isoformat(),
+        mode=WATCH_MODE_SNAPSHOT,
     )
 
     try:
@@ -98,6 +113,8 @@ def tick(
     except FileNotFoundError as exc:
         result.errors.append(str(exc))
         return result
+
+    result.mode = getattr(watch, "mode", None) or WATCH_MODE_SNAPSHOT
 
     try:
         graph = (graph_loader or _default_graph_loader)(watch.campaign_id)
@@ -215,9 +232,14 @@ def list_watches(
 
 
 def _default_graph_loader(campaign_id: str):
-    """Default loader used in production: walks the campaign
-    output dir for the matching state.json, rebuilds the
-    EntityGraph via from_state."""
+    """Snapshot loader (the only production path today).
+
+    Walks the campaign output dir for ``state.json`` and rebuilds
+    the EntityGraph via ``from_state``. This is a **frozen
+    checkpoint** — it does not re-collect seeds or call tools.
+    Fingerprints therefore only change after a subsequent
+    ``nexusrecon run`` / resume writes a new state.json (F-006).
+    """
     import json
 
     from nexusrecon.core.config import get_config

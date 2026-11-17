@@ -2178,9 +2178,12 @@ def ingest_csv(
 
 watch_app = typer.Typer(
     help=(
-        "Continuous monitoring: long-running sensors trigger "
-        "alerts and (for high-severity events) micro-campaigns "
-        "when a campaign's graph changes materially."
+        "Snapshot-diff watches (not live monitoring): each tick "
+        "fingerprints a campaign's frozen state.json and fires "
+        "alerts / queued micro-campaigns when that checkpoint "
+        "digest changes. Digests only move after a new "
+        "`nexusrecon run` / resume. Live re-collection is not "
+        "implemented (F-006 / NEX-14)."
     ),
 )
 app.add_typer(watch_app, name="watch")
@@ -2189,7 +2192,10 @@ app.add_typer(watch_app, name="watch")
 @watch_app.command("create")
 def watch_create(
     watch_id: str = typer.Argument(..., help="Stable id for this watch."),
-    campaign_id: str = typer.Argument(..., help="Campaign id to monitor."),
+    campaign_id: str = typer.Argument(
+        ...,
+        help="Campaign id whose frozen state.json will be fingerprinted.",
+    ),
     parent_domain: str | None = typer.Option(
         None, "--parent-domain",
         help=(
@@ -2211,8 +2217,9 @@ def watch_create(
     ),
     description: str = typer.Option("", "--description"),
 ) -> None:
-    """Create a new watch."""
+    """Create a snapshot-diff watch over a campaign's frozen state.json."""
     from nexusrecon.watch import (
+        WATCH_MODE_SNAPSHOT,
         ScopeSensor,
         Sensor,
         TimedSensor,
@@ -2256,6 +2263,7 @@ def watch_create(
         campaign_id=campaign_id,
         sensors=sensors,
         description=description,
+        mode=WATCH_MODE_SNAPSHOT,
     )
     storage.save_watch(watch)
     console.print(
@@ -2264,8 +2272,12 @@ def watch_create(
                 f"[bold green]Watch created.[/bold green]\n"
                 f"  id:        [cyan]{watch_id}[/cyan]\n"
                 f"  campaign:  [cyan]{campaign_id}[/cyan]\n"
+                f"  mode:      [cyan]{WATCH_MODE_SNAPSHOT}[/cyan] "
+                f"[dim](frozen state.json snapshot-diff)[/dim]\n"
                 f"  sensors:   [cyan]{len(sensors)}[/cyan]\n"
                 f"  config:    [cyan]{storage.config_path}[/cyan]\n\n"
+                f"[yellow]Note:[/yellow] ticks fingerprint the last "
+                f"campaign checkpoint — not live re-collection.\n"
                 f"Run periodically:\n"
                 f"  [bold]nexusrecon watch tick {watch_id}[/bold]"
             ),
@@ -2297,7 +2309,7 @@ def watch_list() -> None:
 def watch_tick(
     watch_id: str = typer.Argument(...),
 ) -> None:
-    """Run one pass of the watch's sensors."""
+    """Run one snapshot-diff pass over the campaign's frozen state.json."""
     from nexusrecon.watch import tick
 
     result = tick(watch_id)
@@ -2308,6 +2320,8 @@ def watch_tick(
             raise typer.Exit(1)
 
     body_lines = [
+        f"mode:              [cyan]{result.mode}[/cyan] "
+        f"[dim](frozen state.json — not live re-collection)[/dim]",
         f"sensors evaluated: [cyan]{result.sensors_evaluated}[/cyan]",
         f"sensors fired:     [cyan]{result.sensors_fired}[/cyan]",
     ]

@@ -64,8 +64,8 @@ Default campaign tooling, graph merge, reporting, and unit/integration suites ar
 ### F-006 — Watch freshness structural limit
 - **Severity:** High (product claim vs behavior)
 - **Evidence:** `_default_graph_loader` rebuilds from frozen `state.json`; ROADMAP Demoted.
-- **Fix:** Not in bounded-repair (design change). Documented; backlog item.
-- **Residual:** CLI Watch still implies monitoring.
+- **Fix:** Applied as honesty pass (NEX-14) — CLI/docs permanently label Watch as **snapshot-diff**; `Watch.mode=snapshot`; tick output surfaces the mode. Full re-collect vertical slice deferred (too large for one PR).
+- **Residual:** Live re-collection (`mode=recollect`) not implemented.
 
 ### F-007 — Continuous Confidence unwired
 - **Severity:** Low as dormancy; Medium as marketing risk
@@ -128,7 +128,7 @@ Default campaign tooling, graph merge, reporting, and unit/integration suites ar
 | 6 | FIXED (log/errors; not abort) |
 | 7 | FIXED (proxy clear) |
 | 8 | CLOSED as intentional dormancy |
-| 9 | OPEN structural — F-006 |
+| 9 | DOCUMENTED (NEX-14 snapshot-diff relabel); re-collect still open |
 | 10 | PARTIAL — verifier packaged; burp pack deferred |
 
 Architecture deep-dive (sibling): `/cursor/stores/bc-5320a189-5267-455a-b4f4-deb5bdee1a88/internal/nexusrecon-architecture-leads.md`

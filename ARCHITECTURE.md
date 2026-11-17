@@ -1031,7 +1031,7 @@ persistence.
     (AND semantics). Refuses construction with no filters so
     operators can't accidentally watch the whole graph.
   - `TimedSensor`. Fires on a cadence regardless of graph state
-    (re-running a passive recon footprint every N hours).
+    (still against the frozen snapshot — does not re-collect).
 - **Severity classifier**: rules cascade in priority:
   vuln-source addition → HIGH, new high-confidence entity →
   HIGH, new CITES edge into a Lead / Hypothesis → HIGH,

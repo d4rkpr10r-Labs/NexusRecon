@@ -103,7 +103,7 @@ By hand, you spend 6-8 hours bouncing across crt.sh, Subfinder, Amass,
 SecurityTrails, Shodan, Censys, urlscan, GitHub, Hunter, HIBP, NVD,
 KEV, EPSS, and Maltego, and you finish without the cross-tool
 correlation, LLM follow-up, ranked threats, audit chain, signed STIX
-bundle, or the continuous watch the framework gives you for free.
+bundle, or a snapshot-diff watch over the campaign checkpoint.
 
 ---
 
@@ -317,7 +317,7 @@ refresh `verification_health` / `weak_links`. See ARCHITECTURE.md section 14.
 | **Signed bundles** | `nexusrecon sign / verify` + standalone script | Ed25519, passphrase-encrypted PEM keys, single-file verifier (`scripts/nexusrecon-verify.py`) that needs only `cryptography`. |
 | **Bidirectional import** | `nexusrecon ingest stix/nessus/nuclei/csv` | Folds partner STIX bundles, Nessus XML, Nuclei JSON-lines, and generic CSV asset inventories into the campaign graph. |
 | **Downstream emitters** | `--format jira / nuclei-targets / cobaltstrike-profile` | Jira REST NDJSON, Nuclei `-list` targets, Cobalt Strike Malleable C2 profile stub (with explicit "review before deploying" warning). |
-| **Watch mode** | `nexusrecon watch` | Diff-driven (EntitySensor + ScopeSensor) + polling (TimedSensor) sensors. Tiered actions: low→alert, medium→notification, high→queued micro-campaign. |
+| **Watch mode** _(snapshot-diff)_ | `nexusrecon watch` | Fingerprints frozen `state.json` via Entity/Scope/Timed sensors. Digests change only after a new campaign run. Tiered actions: low→alert, medium→notification, high→queued micro-campaign. Not live re-collection (F-006). |
 | **Vision pipeline** | `nexusrecon vision scan` | Screenshots / PDFs / logos / QR codes → entities + narrative hypothesis. Multi-provider via langchain. Strategy-driven cost cap (`tool_budgets["vision_calls"]`). |
 
 ### Extensibility (Recon Pack format)
