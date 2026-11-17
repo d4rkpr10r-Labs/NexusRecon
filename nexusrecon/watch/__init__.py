@@ -1,39 +1,37 @@
-"""Watch Mode — Phase 5 PR A.
+"""Watch Mode — Phase 5 PR A (honesty: snapshot-diff).
 
-Continuous monitoring: long-running sensors watch a
-campaign's :class:`EntityGraph` (or a scope subset) and
-trigger actions when material change occurs. Closes the gap
-between "single campaign run" and "ongoing intelligence
-posture" — operators get alerted on new findings without
-having to remember to re-run.
+As shipped (NEX-14 / F-006), each ``tick`` rebuilds the campaign
+graph from frozen ``state.json`` and fingerprints that snapshot.
+It is **not** live continuous monitoring: digests only change
+after a new campaign run rewrites the checkpoint. A future
+``recollect`` mode may re-run seed collectors before
+fingerprinting; that path is not implemented yet.
 
-Architecture
-- **Sensors** (``watch/sensors.py``) define WHAT to watch.
-  Three flavors ship in PR A:
+What works today
+- **Sensors** (``watch/sensors.py``) define WHAT to watch on
+  the snapshot graph:
     * :class:`EntitySensor` — single entity by id.
     * :class:`ScopeSensor` — entities matching a scope
       filter (e.g. "all subdomains of acme.com").
     * :class:`TimedSensor` — fires on a polling schedule
-      regardless of graph state; meant for re-running a
-      passive recon footprint on a cadence.
+      regardless of graph state (still against the snapshot).
 - **Diff + severity** (``watch/severity.py``) compute what
   changed since the last tick and grade it.
 - **Actions** (``watch/actions.py``) decide what to do with
   graded changes — append an alert, send a notification,
-  or launch a micro-campaign.
+  or queue a micro-campaign.
 - **Storage** (``watch/storage.py``) persists watch configs +
   fingerprints + alert history under
   ``~/.nexusrecon/watch/<watch-id>/``.
 - **Runner** (``watch/runner.py``) ties everything together.
-  ``tick(watch_id)`` runs one pass; ``run(watch_id)``
-  loops with sleep.
+  ``tick(watch_id)`` runs one pass.
 
-Sensor activation modes (locked in by architecture
-decisions: "both")
-- Diff-driven: compute a fingerprint of the watched
-  entities; trigger when the fingerprint changes.
-- Polling: re-run a specified footprint on a cadence
-  regardless of graph state.
+Sensor activation modes
+- Diff-driven: fingerprint the watched entities; trigger when
+  the fingerprint changes (vs the previous tick's digest of
+  the same frozen checkpoint lineage).
+- Polling: TimedSensor fires on a cadence regardless of graph
+  state (still no live re-collection).
 
 Action policy (locked in: "tiered")
 - ``low`` severity → alert (append to ``alerts.jsonl``).
@@ -74,6 +72,9 @@ from nexusrecon.watch.severity import (
     diff_graphs,
 )
 from nexusrecon.watch.storage import (
+    SUPPORTED_WATCH_MODES,
+    WATCH_MODE_RECOLLECT,
+    WATCH_MODE_SNAPSHOT,
     Watch,
     WatchAlert,
     WatchStorage,
@@ -85,12 +86,15 @@ __all__ = [
     "ActionResult",
     "EntitySensor",
     "GraphDiff",
+    "SUPPORTED_WATCH_MODES",
     "ScopeSensor",
     "Sensor",
     "SensorFingerprint",
     "Severity",
     "TickResult",
     "TimedSensor",
+    "WATCH_MODE_RECOLLECT",
+    "WATCH_MODE_SNAPSHOT",
     "Watch",
     "WatchAlert",
     "WatchStorage",
