@@ -107,6 +107,7 @@ class ToolRegistry:
         self._audit_log = None
         self._stealth_profile = None
         self._rate_limiter = None
+        self._proxy_manager = None
 
     @property
     def audit_log(self):
@@ -115,7 +116,6 @@ class ToolRegistry:
         audit entries without re-plumbing the campaign object.
         Returns ``None`` when no campaign context is bound."""
         return self._audit_log
-        self._proxy_manager = None
 
     def register(self, tool_cls: type[OSINTTool]) -> None:
         """Register a tool class by instantiating it and storing by name."""

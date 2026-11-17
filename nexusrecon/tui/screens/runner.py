@@ -56,7 +56,9 @@ from nexusrecon.tui.widgets import (
     StatusBar,
 )
 
-_TOTAL_PHASES = 10  # phase1..phase8 + phase7_5 + phase9
+# Keep in sync with nexusrecon.core.campaign_runner phase list
+# (phase1,2,2_5,3,4,5,6,7,7_5,7_7,8,9).
+_TOTAL_PHASES = 12
 
 
 # ── Custom widgets ─────────────────────────────────────────────────────────

@@ -1,0 +1,30 @@
+module_or_entry,role,priority,operational_state,evidence_state,pass_touch,tests_seen,notes
+nexusrecon/cli/main.py,CLI entry run/resume/export,P0,default path,executed+source,A,B,E,integration+smoke,resume repaired to shared runner
+nexusrecon/core/campaign_runner.py,shared phase loop,P0,default path,executed+source,B,C,unit resume skip,checkpoint errors now logged
+nexusrecon/core/campaign.py,CampaignManager persist,P0,default path,source+unit,B,unit campaign models,live dict checkpoints
+nexusrecon/core/entity_graph.py,knowledge graph,P0,default path,executed,B,test_entity_graph,from_state single-source residual
+nexusrecon/core/scope.py,scope enforcement,P0,default path,executed,B,D,integration scope,trust boundary
+nexusrecon/core/audit.py,hash-chained audit,P0,default path,executed,B,D,unit audit,chain verify tested
+nexusrecon/tools/registry.py,tool dispatch+cache+OPSEC bind,P0,default path,executed,B,C,D,unit registry,proxy clear fixed; singleton residual
+nexusrecon/graph/nodes.py,phase implementations,P0,default path,executed,B,smoke+integration,phase2_5/7_7 on default
+nexusrecon/graph/dynamic_dispatcher.py,inter-phase fan-out,P1,default path,executed,B,smoke,caps enforced
+nexusrecon/graph/workflow.py,LangGraph alternate spine,P1,explicitly enabled,source,B,E,integration workflow,third spine residual
+nexusrecon/strategy/*,Strategy plan/sim/agency,P1,partially integrated,source+unit,E,phase_1a tests,criteria unread
+nexusrecon/verification/*,confidence engine,P2,stubbed/planned wiring,unit only,B,phase_2* tests,intentional dormancy
+nexusrecon/watch/*,continuous refresh,P1,standalone,unit+source,B,E,phase_5a watch,frozen state loader
+nexusrecon/export/stix.py,STIX handoff,P0,explicit export,executed,B,D,phase_4b,secret redaction fixed
+nexusrecon/crypto/*,signing receipts,P1,explicit,unit,B,D,phase_5b,verify asset packaged
+nexusrecon/packs/*,pack loader,P2,partially integrated,source,E,phase_3*,marketplace empty
+nexusrecon/sdk/*,scaffolds,P3,standalone,unit,E,phase_3b,guardrails unwired in prod
+nexusrecon/vision/*,multimodal,P3,standalone budget0,unit,E,phase_5d,demoted
+nexusrecon/intent/*,NL plan,P2,explicit CLI,unit,E,phase_4a,TUI deferred
+nexusrecon/tui/*,operator UI,P1,default for many ops,unit,A,B,tui phase tests,watch/intent tabs moving
+nexusrecon/reports/engine.py,report generation,P0,default path,executed,B,smoke+integration,core value
+nexusrecon/ingest/*,import adapters,P2,explicit,unit,B,phase_4c,manual post-run
+nexusrecon/opsec/*,proxy rate tls,P0,partially integrated,source+int,C,D,opsec_wire,dormant gaps documented
+nexusrecon/adversarial/*,fabricated signal scan,P2,explicit CLI,unit,B,phase_2d,separate from verification
+scripts/nexusrecon-verify.py,standalone verify,P1,standalone,source+packaged copy,A,D,test_verifier_packaged,also under assets/
+packs/burp,first-party pack,P3,not on load path,source,E,none,not in wheel
+tests/smoke/*,e2e smoke,P0,CI,executed,A,smoke 6 passed,dispatcher skip narrowed
+tests/integration/test_campaign.py,campaign integration,P0,CI,executed,B,33 related passed,mocked tools
+docs README/ARCHITECTURE/ROADMAP,claims,P0,n/a,source inspection,E,claim inventory,contradictions logged
