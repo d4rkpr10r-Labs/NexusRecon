@@ -1,13 +1,16 @@
-"""Recon Pack format — Phase 3 PR A.
+"""Recon Pack format — Phase 3 PR A (experimental).
 
 A **recon pack** is a portable bundle of contributions —
 tools, agents, dispatch policies, report templates, custom
 entity / relationship types — distributed as a directory with
-a ``manifest.yaml`` at its root. Packs let community
-contributors extend NexusRecon without forking the core
-codebase, in the same spirit that Metasploit modules let
-operators ship aggressive new capabilities without rebuilding
-Metasploit itself.
+a ``manifest.yaml`` at its root.
+
+**Honesty (NEX-17 / P3.12):** the loader + ``nexusrecon packs``
+CLI are in-tree and usable, but packs are **not** a stable 1.0
+community platform. The marketplace URL is empty; the first-
+party ``packs/burp`` tree is **checkout dogfood only** — not
+shipped in the wheel and not on the default load path. Do not
+advertise packs as stable until those gaps close.
 
 Lifecycle
 - Packs live under ``~/.nexusrecon/packs/<pack-name>/``.

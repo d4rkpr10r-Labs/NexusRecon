@@ -328,12 +328,12 @@ refresh `verification_health` / `weak_links`. See ARCHITECTURE.md section 14.
 
 | Capability | Surface | What it does |
 |------------|---------|--------------|
-| **Pack format** | `~/.nexusrecon/packs/<name>/manifest.yaml` | Tools, agents, dispatch policies, report templates, custom entity/rel types. Manifest hash + unsigned trust model. |
-| **Pack distribution** | `nexusrecon packs install gh:owner/repo` | Git URL or local dir install. `update` / `uninstall` / `search` companions. |
+| **Pack format** _(experimental)_ | `~/.nexusrecon/packs/<name>/manifest.yaml` | Tools, agents, dispatch policies, report templates, custom entity/rel types. Manifest hash + unsigned trust model. **Not** a stable 1.0 marketplace. |
+| **Pack distribution** _(experimental)_ | `nexusrecon packs install gh:owner/repo` | Git URL or local dir install. Marketplace search URL empty by default. |
 | **Agent SDK** | `nexusrecon agent new` | Interactive Rich-prompted scaffolder. Prompt versioning + citation guardrails wired into the template. |
 | **Tool SDK** | `nexusrecon tool new` | Interactive capability picker (category × tier × target_types). |
 | **Policy SDK** | `nexusrecon policy new` | Phase-eligibility picker. Generated policy selectable via `--dispatch-mode <name>`. |
-| **First-party pack** | `packs/burp/` | Bidirectional Burp Suite XML handoff (import site map + export scope). Dogfood example for the pack format. |
+| **First-party pack** _(checkout dogfood)_ | `packs/burp/` | Burp XML handoff example. **Not** in the wheel and **not** on the default load path — symlink into `~/.nexusrecon/packs` to try (NEX-17). |
 
 The tool registry spans subdomain enumeration, certificate
 transparency, DNS / passive DNS, breach data, email / identity,
@@ -503,7 +503,8 @@ What's demoted / experimental (in-tree; not default-run product):
   dispatch policy + `vision_calls` budget are enforced; simulation
   abort / approval resolver remain demoted
 - Recon Packs marketplace + Contribution SDK — empty marketplace
-  URL; first-party pack not on default load path
+  URL; `packs/burp` checkout dogfood only (not in wheel / not
+  default load path; NEX-17 decision)
 - Watch Mode — snapshot-diff of frozen `state.json`, not live
   monitoring
 - Vision pipeline — standalone CLI; default budget 0; campaign does

@@ -88,12 +88,12 @@ There are two paths now, both supported and both first-class:
    entity / relationship types. Three scaffolders bootstrap the
    boilerplate.
 
-If you're authoring something the wider community will use, **the
-recon pack path is now the default**. It lets you ship without
-forking the repo and lets operators install your work with
-`nexusrecon packs install gh:you/your-pack`. See
-[`ARCHITECTURE.md §17`](ARCHITECTURE.md#17-recon-pack-format--contribution-sdk-phase-3)
-for the design rationale.
+If you're authoring something the wider community will use, prefer
+the **out-of-tree recon pack path** (experimental — not a curated
+1.0 marketplace; see ARCHITECTURE.md §17 / NEX-17). It lets you
+ship without forking the repo and lets operators install with
+`nexusrecon packs install gh:you/your-pack`. The in-tree
+`packs/burp` example is checkout dogfood only (not in the wheel).
 
 ### Quick path: scaffolders
 
