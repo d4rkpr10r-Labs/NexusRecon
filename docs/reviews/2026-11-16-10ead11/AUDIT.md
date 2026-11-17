@@ -97,12 +97,12 @@ Default campaign tooling, graph merge, reporting, and unit/integration suites ar
 - **Severity:** High (re-runs all phases from blank intel)
 - **Evidence:** Architecture lead report — `cli/main.py` built fresh `completed_phases: []` after CampaignManager load. Confirmed on branch before follow-up patch.
 - **Fix:** Applied — hydrate live dict from `state.json` when `--resume` / `is_resume`.
-- **Residual:** TUI “Resume” still opens Results only (F-013); LangGraph SqliteSaver unused (F-014).
+- **Residual:** LangGraph SqliteSaver unused (F-014). F-013 fixed in NEX-12.
 
 ### F-013 — TUI Resume opens ResultsScreen only
 - **Severity:** Medium (false resume UX)
-- **Evidence:** `tui/screens/campaigns.py:274-278`; architecture leads report.
-- **Fix:** Not applied (UI workflow). Backlog.
+- **Evidence:** `tui/screens/campaigns.py` Enter → ResultsScreen only.
+- **Fix:** Applied (NEX-12) — Resume mode pushes `RunnerScreen(resume_campaign_dir=…)` for incomplete campaigns; shared `campaign_resume` hydration + `run_campaign`. DONE / browse still open Results.
 
 ### F-014 — LangGraph SqliteSaver non-functional
 - **Severity:** Medium
@@ -124,7 +124,7 @@ Default campaign tooling, graph merge, reporting, and unit/integration suites ar
 | 2 | PARTIAL — mocked E2E passes; live success blocked without keys |
 | 3 | FIXED (narrowed skip) |
 | 4 | FIXED |
-| 5 | FIXED (runner + CLI `resume` + `run --resume` hydrate); TUI/LangGraph residual F-013/F-014 |
+| 5 | FIXED (runner + CLI `resume` + `run --resume` hydrate + TUI Resume F-013); LangGraph residual F-014 |
 | 6 | FIXED (log/errors; not abort) |
 | 7 | FIXED (proxy clear) |
 | 8 | CLOSED as intentional dormancy |

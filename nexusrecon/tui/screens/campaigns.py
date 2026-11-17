@@ -6,7 +6,11 @@ shows campaign metadata that would otherwise require pushing
 the ResultsScreen — engagement / scope_hash / completed
 phases / findings breakdown / cost / last modified — so the
 operator can scan rows without committing to a full open.
-``Enter`` still drills into the ResultsScreen as before.
+
+F-013 / NEX-12: in ``resume_mode``, Enter on an incomplete
+campaign pushes ``RunnerScreen`` so phases continue via the
+shared ``run_campaign`` spine. Completed campaigns and the
+browse-only Past Campaigns path still open ResultsScreen.
 """
 from __future__ import annotations
 
@@ -25,7 +29,13 @@ from nexusrecon.tui.widgets import StatusBar
 
 
 class CampaignsScreen(Screen):
-    """List of past campaigns. Enter on a row → results screen for it.
+    """List of past campaigns.
+
+    Enter behaviour:
+      - Browse (``resume_mode=False``): ResultsScreen.
+      - Resume (``resume_mode=True``) + incomplete: RunnerScreen
+        continuing via ``run_campaign`` (F-013).
+      - Resume + DONE: ResultsScreen (nothing left to run).
 
     TUI-7 additions:
       - ``/`` reveals a substring filter Input above the table;
@@ -261,6 +271,11 @@ class CampaignsScreen(Screen):
 
     # ── Events ──────────────────────────────────────────────────────────
 
+    @staticmethod
+    def should_resume_via_runner(resume_mode: bool, status: str) -> bool:
+        """True when Enter should continue phases (F-013), not open Results."""
+        return bool(resume_mode) and str(status).upper() != "DONE"
+
     async def on_data_table_row_selected(
         self, event: DataTable.RowSelected,
     ) -> None:
@@ -271,6 +286,28 @@ class CampaignsScreen(Screen):
         if idx is None or idx >= len(visible):
             return
         camp = visible[idx]
+        await self._open_campaign(camp)
+
+    async def _open_campaign(self, camp: dict[str, Any]) -> None:
+        """Push RunnerScreen (resume) or ResultsScreen (browse / DONE)."""
+        if self.should_resume_via_runner(
+            self.resume_mode, camp.get("status", ""),
+        ):
+            from nexusrecon.tui.screens.runner import RunnerScreen
+            state = camp.get("state") or {}
+            mode = str(state.get("mode") or "medium").lower()
+            dispatch = str(state.get("dispatch_mode") or "lite")
+            await self.app.push_screen(RunnerScreen(
+                resume_campaign_dir=str(camp["campaign_dir"]),
+                mode=mode,
+                dispatch_mode=dispatch,
+                validate_creds=bool(state.get("validate_credentials")),
+                generate_phishing=bool(
+                    state.get("generate_phishing_drafts"),
+                ),
+            ))
+            return
+
         from nexusrecon.tui.screens.results import ResultsScreen
         await self.app.push_screen(ResultsScreen(
             campaign_dir=camp["campaign_dir"],

@@ -192,14 +192,20 @@ class RunnerScreen(Screen):
 
     def __init__(
         self,
-        scope_path: str,
+        scope_path: str = "",
         mode: str = "light",
         dispatch_mode: str = "lite",
         validate_creds: bool = False,
         generate_phishing: bool = False,
+        resume_campaign_dir: str | None = None,
     ) -> None:
+        if not scope_path and not resume_campaign_dir:
+            raise ValueError(
+                "RunnerScreen requires scope_path or resume_campaign_dir",
+            )
         super().__init__()
         self.scope_path = scope_path
+        self.resume_campaign_dir = resume_campaign_dir
         self.mode = mode
         self.dispatch_mode = dispatch_mode
         self.validate_creds = validate_creds
@@ -347,9 +353,14 @@ class RunnerScreen(Screen):
         # the new screen the moment they press "Save & Run". The campaign
         # worker boots in the background while they read the layout.
         self._update_stats()
+        resume_note = (
+            "Resuming from checkpoint…"
+            if self.resume_campaign_dir
+            else "Preparing campaign workspace…"
+        )
         self._log(
             f"{datetime.utcnow().strftime('%H:%M:%S')}  •  "
-            f"Preparing campaign workspace…"
+            f"{resume_note}"
         )
 
         # Tail the session log file so the Detail panel shows the
@@ -449,26 +460,109 @@ class RunnerScreen(Screen):
         # still work — they just take 30+s.
         from nexusrecon.core.campaign import CampaignManager
         from nexusrecon.core.campaign_runner import run_campaign
+        from nexusrecon.core.config import get_config
         from nexusrecon.core.scope import ScopeGuard, ScopeModel
         from nexusrecon.models.campaign import CampaignMode
+        from nexusrecon.opsec.setup import bind_campaign_opsec
         from nexusrecon.reports.engine import ReportEngine
 
-        scope_model = ScopeModel.from_yaml(self.scope_path)
-        campaign = CampaignManager(
-            scope=scope_model,
-            mode=CampaignMode(self.mode),
-        )
-        campaign.setup()
+        if self.resume_campaign_dir:
+            from nexusrecon.core.campaign_resume import (
+                hydrate_runner_state,
+                load_resume_context,
+                prepare_resume_campaign,
+            )
+
+            ctx = load_resume_context(self.resume_campaign_dir)
+            campaign = prepare_resume_campaign(ctx)
+            scope_model = ctx.scope_model
+            self.mode = ctx.campaign_mode.value
+            state = hydrate_runner_state(
+                ctx.state_data, campaign_id=ctx.campaign_id,
+            )
+            # Checkpoint wins for resume; constructor values are only a
+            # fallback when the persisted state omitted the field.
+            self.dispatch_mode = str(
+                state.get("dispatch_mode") or self.dispatch_mode or "lite",
+            )
+            self.validate_creds = bool(
+                state.get("validate_credentials", self.validate_creds),
+            )
+            self.generate_phishing = bool(
+                state.get("generate_phishing_drafts", self.generate_phishing),
+            )
+            state["dispatch_mode"] = self.dispatch_mode
+            state["validate_credentials"] = self.validate_creds
+            state["generate_phishing_drafts"] = self.generate_phishing
+            completed = list(state.get("completed_phases") or [])
+            self._phase_done = min(len(completed), _TOTAL_PHASES)
+        else:
+            scope_model = ScopeModel.from_yaml(self.scope_path)
+            campaign = CampaignManager(
+                scope=scope_model,
+                mode=CampaignMode(self.mode),
+            )
+            campaign.setup()
+            state = {
+                "campaign_id": campaign.campaign_id,
+                "engagement_id": scope_model.engagement.engagement_id,
+                "scope_hash": scope_model.scope_hash or "",
+                "seeds": list(scope_model.scope.in_scope.domains),
+                "completed_phases": [],
+                "current_phase": "init",
+                "findings": [],
+                "subdomain_intel": {},
+                "email_intel": {"emails": {}},
+                "cloud_intel": {},
+                "code_intel": {},
+                "infra_intel": {},
+                "domain_intel": {},
+                "vuln_intel": {},
+                "pretext_intel": {},
+                "entity_graph": {},
+                "hypotheses": [],
+                "confirmed_leads": [],
+                "validate_credentials": self.validate_creds,
+                "generate_phishing_drafts": self.generate_phishing,
+                "dispatch_mode": self.dispatch_mode,
+                "llm_cost_usd": 0.0,
+                "max_llm_cost_usd": getattr(
+                    scope_model.constraints, "max_llm_cost_usd", 10.0,
+                ),
+                "tool_cost_usd": 0.0,
+                "step_count": 0,
+                "errors": [],
+                "agent_messages": [],
+                "report_paths": {},
+            }
+            # Preserve a copy of the scope file inside the campaign for audit
+            try:
+                campaign_scope_dst = Path(campaign.campaign_dir) / "scope.yaml"
+                campaign_scope_dst.write_text(
+                    Path(self.scope_path).read_text(encoding="utf-8"),
+                    encoding="utf-8",
+                )
+            except Exception:
+                pass
+
         self.campaign_id = campaign.campaign_id
         self.campaign_dir = str(campaign.campaign_dir)
         try:
             self.query_one("#runner-header", Container).border_title = (
                 f"Campaign  {self.campaign_id}"
+                + ("  ·  resume" if self.resume_campaign_dir else "")
             )
         except Exception:
             pass
+        try:
+            self.query_one("#runner-progress", ChunkyBar).progress = (
+                self._phase_done
+            )
+        except Exception:
+            pass
+        preparing = "Resuming" if self.resume_campaign_dir else "Preparing"
         self._update_label(
-            "[bold #00ff9c]Preparing[/bold #00ff9c]",
+            f"[bold #00ff9c]{preparing}[/bold #00ff9c]",
             sub=(
                 f"[dim]Mode: {self.mode}  ·  Dispatch: {self.dispatch_mode}  "
                 f"·  Tier cap: {scope_model.constraints.max_tier}[/dim]"
@@ -479,54 +573,12 @@ class RunnerScreen(Screen):
         # the scope's stealth_profile and NEXUS_PROXY_URL actually apply on
         # the wire. ProxyRequiredError propagates to the worker's FATAL
         # handler when require_proxy is set without a configured proxy.
-        from nexusrecon.core.config import get_config
-        from nexusrecon.opsec.setup import bind_campaign_opsec
         scope_guard = ScopeGuard(scope_model)
         bind_campaign_opsec(
             scope_guard, campaign.cache, campaign.audit_log,
             scope_model, get_config(),
         )
 
-        # Preserve a copy of the scope file inside the campaign for audit
-        try:
-            campaign_scope_dst = Path(self.campaign_dir) / "scope.yaml"
-            campaign_scope_dst.write_text(
-                Path(self.scope_path).read_text(encoding="utf-8"),
-                encoding="utf-8",
-            )
-        except Exception:
-            pass
-
-        state: dict[str, Any] = {
-            "campaign_id": campaign.campaign_id,
-            "engagement_id": scope_model.engagement.engagement_id,
-            "scope_hash": scope_model.scope_hash or "",
-            "seeds": list(scope_model.scope.in_scope.domains),
-            "completed_phases": [],
-            "current_phase": "init",
-            "findings": [],
-            "subdomain_intel": {},
-            "email_intel": {"emails": {}},
-            "cloud_intel": {},
-            "code_intel": {},
-            "infra_intel": {},
-            "domain_intel": {},
-            "vuln_intel": {},
-            "pretext_intel": {},
-            "entity_graph": {},
-            "hypotheses": [],
-            "confirmed_leads": [],
-            "validate_credentials": self.validate_creds,
-            "generate_phishing_drafts": self.generate_phishing,
-            "dispatch_mode": self.dispatch_mode,
-            "llm_cost_usd": 0.0,
-            "max_llm_cost_usd": getattr(scope_model.constraints, "max_llm_cost_usd", 10.0),
-            "tool_cost_usd": 0.0,
-            "step_count": 0,
-            "errors": [],
-            "agent_messages": [],
-            "report_paths": {},
-        }
         self._state = state
 
         def on_event(evt: dict[str, Any]) -> None:

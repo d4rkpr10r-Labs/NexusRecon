@@ -14,7 +14,7 @@ Ordered by dependency. Items marked **done-on-branch** are in `cursor/assurance-
 5. **Route `--use-graph` through same phase set + OPSEC bind** or document as experimental alternate spine; wire SqliteSaver `thread_id` or remove dead checkpointer (F-014).
 6. **Bind rate_limiter / proxy_manager on all campaign entry points** and migrate remaining HTTP tools to `registry.opsec_http_get` (OPSEC_STATUS).
 7. **Per-campaign registry context** (ContextVar) to replace process-global singleton for parallel/TUI safety.
-7b. **TUI Resume continues phases** via shared runner (today opens ResultsScreen only — F-013).
+7b. **TUI Resume continues phases** via shared runner (F-013) — *done (NEX-12)*.
 
 ## P2 — Knowledge plane
 
