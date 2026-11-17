@@ -17,9 +17,9 @@ from typing import Any
 
 import httpx
 
+from nexusrecon.opsec.context import proxy_kwargs
 from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult, make_http_client
 from nexusrecon.tools.registry import register_tool
-from nexusrecon.opsec.context import proxy_kwargs
 
 GITHUB_CODE_DORKS = [
     "aws_access_key_id",

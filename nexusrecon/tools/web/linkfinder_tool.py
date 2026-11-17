@@ -5,12 +5,10 @@ import re
 from typing import Any
 from urllib.parse import urljoin, urlparse
 
-import httpx
-
+from nexusrecon.opsec.context import proxy_kwargs
 from nexusrecon.opsec.useragent import random_ua
 from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult, make_http_client
 from nexusrecon.tools.registry import register_tool
-from nexusrecon.opsec.context import proxy_kwargs
 
 # Endpoint patterns extracted from JS source
 _ENDPOINT_PATTERNS = [

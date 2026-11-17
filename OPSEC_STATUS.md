@@ -45,13 +45,15 @@ tests above will start asserting on them.
   Ad-hoc phase-6 probes continue to use `registry.opsec_http_get`
   (rate limit + jitter + proxy + TLS).
 
-**Still out of scope / not HTTP-tool OPSEC:**
+**Still out of scope / residual:**
 
-- Subprocess CLI wrappers (e.g. `subfinder`, `amass`, `nuclei`) that
-  do not open httpx clients — proxy flags are tool-specific when the
-  binary supports them.
-- Cross-process resume of LangGraph checkpointers (see F-014 / NEX-9);
-  durable resume is `state.json`.
+- Subprocess tools now inherit the campaign proxy via
+  `opsec.context.proxy_env()` → `HTTP(S)_PROXY` / `ALL_PROXY` in
+  `OSINTTool.run_subprocess` and maigret's `create_subprocess_exec`
+  (NEX-10). Binaries that ignore those env vars still need native flags.
+- Cross-process LangGraph checkpointers (F-014 / NEX-9); durable resume
+  is `state.json`.
+- Per-campaign registry ContextVar isolation (NEX-11).
 
 To migrate a *new* HTTP tool:
 

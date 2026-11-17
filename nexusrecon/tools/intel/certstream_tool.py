@@ -4,9 +4,9 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-import httpx
 from dateutil import parser as dateutil_parser
 
+from nexusrecon.opsec.context import proxy_kwargs
 from nexusrecon.opsec.useragent import random_ua
 from nexusrecon.tools.base import (
     Category,
@@ -17,7 +17,6 @@ from nexusrecon.tools.base import (
     make_http_client,
 )
 from nexusrecon.tools.registry import register_tool
-from nexusrecon.opsec.context import proxy_kwargs
 
 _HEADERS = {
     "User-Agent": random_ua(),

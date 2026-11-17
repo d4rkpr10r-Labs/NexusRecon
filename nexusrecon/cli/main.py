@@ -315,6 +315,7 @@ def run(
         console.print(f"Campaign ID: [cyan]{campaign.campaign_id}[/cyan]")
         console.print(f"Would create output at: [cyan]{campaign.campaign_dir}[/cyan]")
         console.print(scope_model.summary())
+        get_registry().clear_campaign_context()
         return
 
     # Phase 1 PR B: planner orchestration. ``--plan-only`` runs
@@ -395,6 +396,7 @@ def run(
         if rationale:
             console.print(f"\n[dim]Rationale:[/dim] {rationale}")
         console.print(f"\nWritten to: [cyan]{plan_path}[/cyan]")
+        get_registry().clear_campaign_context()
         return
 
     # Run the campaign
@@ -618,6 +620,8 @@ def run(
     except Exception as e:
         console.print(f"[bold red]Campaign failed:[/bold red] {e}")
         raise typer.Exit(1)
+    finally:
+        get_registry().clear_campaign_context()
 
 
 @app.command()

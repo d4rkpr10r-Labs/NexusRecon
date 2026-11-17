@@ -3,8 +3,7 @@ from __future__ import annotations
 
 from typing import Any
 
-import httpx
-
+from nexusrecon.opsec.context import proxy_kwargs
 from nexusrecon.tools.base import (
     Category,
     OSINTTool,
@@ -14,7 +13,6 @@ from nexusrecon.tools.base import (
     make_http_client,
 )
 from nexusrecon.tools.registry import register_tool
-from nexusrecon.opsec.context import proxy_kwargs
 
 
 @register_tool

@@ -3,13 +3,12 @@ from __future__ import annotations
 
 from typing import Any
 
-import httpx
 from bs4 import BeautifulSoup
 
+from nexusrecon.opsec.context import proxy_kwargs
 from nexusrecon.opsec.useragent import random_ua
 from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult, make_http_client
 from nexusrecon.tools.registry import register_tool
-from nexusrecon.opsec.context import proxy_kwargs
 
 _HEADERS = {
     "User-Agent": random_ua(),

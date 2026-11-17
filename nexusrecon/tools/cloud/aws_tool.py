@@ -21,10 +21,10 @@ from typing import Any
 
 import httpx
 
+from nexusrecon.opsec.context import proxy_kwargs
 from nexusrecon.opsec.useragent import random_ua
 from nexusrecon.tools.base import Category, OSINTTool, Tier, ToolResult, make_http_client
 from nexusrecon.tools.registry import register_tool
-from nexusrecon.opsec.context import proxy_kwargs
 
 S3_REGIONS = [
     "us-east-1", "us-east-2", "us-west-1", "us-west-2",

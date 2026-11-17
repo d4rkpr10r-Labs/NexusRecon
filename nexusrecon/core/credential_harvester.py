@@ -7,8 +7,8 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-import httpx
 import structlog
+
 from nexusrecon.opsec.context import proxy_kwargs
 from nexusrecon.tools.base import make_http_client
 

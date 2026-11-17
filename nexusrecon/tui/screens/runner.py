@@ -432,6 +432,14 @@ class RunnerScreen(Screen):
                 "[bold #ff5555]Campaign failed[/bold #ff5555]",
                 sub=f"[#ff5555]{safe}[/#ff5555]",
             )
+        finally:
+            # NEX-10: drop OPSEC bind so the next TUI campaign cannot
+            # inherit the previous run's scope / rate limiter / proxy.
+            try:
+                from nexusrecon.tools.registry import get_registry
+                get_registry().clear_campaign_context()
+            except Exception:
+                pass
 
     async def _run(self) -> None:
         # These imports are warmed up at welcome-screen mount (see
@@ -444,7 +452,6 @@ class RunnerScreen(Screen):
         from nexusrecon.core.scope import ScopeGuard, ScopeModel
         from nexusrecon.models.campaign import CampaignMode
         from nexusrecon.reports.engine import ReportEngine
-        from nexusrecon.tools.registry import get_registry
 
         scope_model = ScopeModel.from_yaml(self.scope_path)
         campaign = CampaignManager(

@@ -69,6 +69,28 @@ def proxy_kwargs() -> dict[str, Any]:
     return {}
 
 
+def proxy_env() -> dict[str, str]:
+    """Return subprocess environment overrides for the campaign proxy.
+
+    Subprocess analogue of :func:`proxy_kwargs`. Returns ``{}`` when no
+    proxy is active, or ``HTTP(S)_PROXY`` / ``ALL_PROXY`` (and lowercase)
+    set to the active URL when ``proxy_context`` is bound. Callers should
+    pass ``env={**os.environ, **proxy_env()}`` when non-empty, else
+    ``env=None`` so the child inherits the parent environment unchanged.
+    """
+    url = get_current_proxy_url()
+    if not url:
+        return {}
+    return {
+        "HTTP_PROXY": url,
+        "HTTPS_PROXY": url,
+        "ALL_PROXY": url,
+        "http_proxy": url,
+        "https_proxy": url,
+        "all_proxy": url,
+    }
+
+
 @contextmanager
 def proxy_context(url: str | None) -> Iterator[None]:
     """Set the proxy URL for the duration of the ``with`` block.
