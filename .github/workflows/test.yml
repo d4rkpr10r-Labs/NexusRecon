@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [master, main]
 
+# Least privilege for GITHUB_TOKEN (CodeQL actions/missing-permissions).
+permissions:
+  contents: read
+
 jobs:
   pytest:
     name: pytest (py${{ matrix.python-version }})
