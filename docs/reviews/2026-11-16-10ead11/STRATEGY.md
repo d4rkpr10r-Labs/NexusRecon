@@ -114,7 +114,7 @@ Disposition key: keep / revise / defer / reject.
 | 9 | **Replayable fixture benchmarks** (yield/precision/restart) | keep → *harness (NEX-20)* | `nexusrecon.benchmarks` + planted_passive fixture; attribution/wall-clock deferred |
 | 10 | **Packs marketplace / Vision-as-autonomous / fleet learning** | defer / reject for 1.0 | ROADMAP correctly demotes; no audience yet |
 | 11 | **Deception-aware evidence + adversarial hypothesis review** | keep (narrow) | Adversarial CLI exists; fold signals into ranking, don’t expand UI |
-| 12 | **Integrate don’t rewrite** for recursive DNS depth (shell out / ingest BBOT or Amass graphs) | keep | Cheaper than copying BBOT’s event engine |
+| 12 | **Integrate don’t rewrite** for recursive DNS depth (shell out / ingest BBOT or Amass graphs) | keep → *ingest adapters (NEX-21)* | `BBOTImporter` / `AmassImporter` + `nexusrecon ingest bbot|amass` |
 
 ### Three flagship workflows
 

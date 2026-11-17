@@ -1,0 +1,5 @@
+{"type": "DNS_NAME", "id": "DNS_NAME:example.test", "data": "example.test", "host": "example.test", "resolved_hosts": ["203.0.113.1"], "module": "target", "tags": ["in-scope"], "timestamp": 1729266013.0}
+{"type": "DNS_NAME", "id": "DNS_NAME:www.example.test", "data": "www.example.test", "host": "www.example.test", "resolved_hosts": ["203.0.113.10"], "parent": "DNS_NAME:example.test", "module": "certspotter", "tags": ["subdomain", "in-scope"], "timestamp": 1729266014.0}
+{"type": "DNS_NAME", "id": "DNS_NAME:api.example.test", "data": "api.example.test", "host": "api.example.test", "resolved_hosts": ["203.0.113.20"], "parent": "DNS_NAME:example.test", "module": "chaos", "tags": ["subdomain"], "timestamp": 1729266015.0}
+{"type": "IP_ADDRESS", "id": "IP_ADDRESS:203.0.113.10", "data": "203.0.113.10", "resolved_hosts": ["203.0.113.10"], "module": "A", "tags": ["ipv4"], "timestamp": 1729266016.0}
+{"type": "OPEN_TCP_PORT", "id": "OPEN_TCP_PORT:203.0.113.10:443", "data": "203.0.113.10:443", "module": "portscan", "tags": ["open-port"]}
