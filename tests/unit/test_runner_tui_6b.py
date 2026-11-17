@@ -375,11 +375,14 @@ class TestRunnerMountsTUI6bWidgets:
                 screen = app.screen
                 screen.action_focus_filter()
                 await pilot.pause(0.1)
-                # Stash a filter value via the public method.
-                screen._filter_text = "phase2"
                 from textual.widgets import Input
                 inp = screen.query_one("#runner-filter", Input)
+                # Drive value through the Input so Changed settles
+                # before clear (avoids racing a deferred Changed
+                # against action_clear_filter on py3.13).
                 inp.value = "phase2"
+                await pilot.pause(0.1)
+                assert screen._filter_text == "phase2"
                 screen.action_clear_filter()
                 await pilot.pause(0.1)
                 assert screen._filter_text == ""

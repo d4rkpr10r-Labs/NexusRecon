@@ -43,37 +43,35 @@ tool to run next, on what target, in response to what the previous
 tool just told you**. And proving the resulting findings are still
 true six weeks later when legal asks.
 
-NexusRecon is built around four durable capabilities (plus one
-experimental engine kept in-tree, noted after the list):
+NexusRecon is built around two durable capabilities on the default
+`nexusrecon run` path, plus signed handoff and several in-tree
+surfaces that are real code but **not** 1.0 product claims (see
+ROADMAP “Demoted out of the 1.0 story”):
 
 1. **Living Intelligence Graph**: every entity (subdomain, IP, email,
    person, cloud asset, vulnerability, hypothesis, lead, open
-   question) is a first-class node with provenance, confidence,
-   citations, and traversable relationships. Agents reason over the
-   graph instead of flat dictionaries.
-2. **Strategic Reasoning Engine**: operator-authored or
-   planner-generated `Strategy` objects drive phase selection,
-   dispatch policy, success / kill criteria, and tool budgets. Cost
-   simulation runs before every LLM dispatch; bounded-agency
-   primitives let high-tier items queue for human approval instead
-   of auto-firing.
-3. **First-class extensibility**: community recon packs (a
-   directory + `manifest.yaml`) contribute tools, agents, dispatch
-   policies, report templates, and custom entity / relationship
-   types. Three scaffolders (`agent new` / `tool new` /
-   `policy new`) generate working boilerplate in seconds.
-4. **Cryptographically signed handoff**: STIX 2.1 bundle export +
-   Ed25519 signed receipts + a standalone single-file Python
-   verifier downstream consumers can run without installing
-   NexusRecon. Plus bidirectional import from Nessus, Nuclei,
-   generic CSV, and STIX bundles produced by partners.
+   question) is a first-class node with confidence, citations, and
+   traversable relationships. Agents reason over the graph instead of
+   flat dictionaries. (Per-source provenance writers are still a
+   follow-up — do not treat every node as fully attributed yet.)
+2. **Dispatch loop**: `reflection_node` + the dynamic dispatcher
+   select follow-up tools between phases under lite/full/off
+   policies. This loop is what earns its keep on a default run.
+3. **Cryptographically signed handoff**: STIX 2.1 bundle export +
+   Ed25519 signed receipts + a packaged standalone verifier for
+   downstream consumers. Bidirectional import from Nessus, Nuclei,
+   generic CSV, and STIX is available as post-run CLI.
 
-**Experimental (in-tree, opt-in, not wired into a default run):** a
-**Continuous Confidence Engine** (`nexusrecon/verification/`) whose
-orchestrator can subscribe to graph mutations and run corroboration,
-contradiction, propagation, and adversarial self-check verifiers. The
-code is unit-tested but no default `nexusrecon run` constructs it yet;
-see ARCHITECTURE.md section 14 and ROADMAP item 8.
+**In-tree but demoted / experimental (not default-run product):**
+`Strategy` criteria/budgets/simulation/approval queue (planner +
+dataclass exist; enforcement largely unread — keep the dispatch
+loop, treat the rest as roadmap), Recon Packs + Contribution SDK
+(loader/scaffolders exist; marketplace empty; first-party pack not
+on the default load path), Watch Mode (snapshot-diff of frozen
+`state.json`, not live monitoring), Vision (standalone CLI; default
+`vision_calls` budget 0), and the **Continuous Confidence Engine**
+(`nexusrecon/verification/` — unit-tested, not constructed on a
+default run). See ARCHITECTURE.md §§14–18, 21 and ROADMAP demotions.
 
 ---
 
@@ -94,7 +92,7 @@ laptop with default API keys configured, typical 30-60 min run:
 | **Adversarial scan** | `nexusrecon adversarial scan` finds 2 subdomains lockstep-fabricated by an upstream wildcard DNS server → confidence halved + queued for review. |
 | **Phase 8** · attack-surface rank | Top thread: "KEV-listed VPN CVE on `vpn.acme.com` + 3 breached employees in scope for credential reuse". |
 | **Phase 9** · reports | `master_reporter` writes the narrative. STIX 2.1 export + Ed25519 signed receipt produced for downstream consumers. |
-| **Watch** | `nexusrecon watch create acme-watch <campaign> --parent-domain acme.com --interval-hours 6` keeps a sensor running. Any new subdomain or KEV-listed CVE triggers a tiered alert + a queued micro-campaign. |
+| **Watch (optional)** | `nexusrecon watch create …` can fingerprint a campaign’s saved `state.json` and queue alerts / micro-campaigns on digest change. As shipped this is **snapshot-diff**, not live re-collection — see ROADMAP demotion. |
 
 **Output**: a `campaigns/acme/<engagement>/<id>/reports/` directory
 with the master report + ranked threads + STIX bundle + signed receipt
@@ -290,11 +288,11 @@ nexusrecon resume nr-20260514-120000-abc12345
 | Capability | Surface | What it does |
 |------------|---------|--------------|
 | **Living Graph** | `nexusrecon.core.entity_graph` | 17+ entity types, provenance records, confidence, relationships, hypotheses/leads/open-questions as first-class nodes, mutation events. |
-| **Strategy + planner** | `nexusrecon.strategy` | Declarative plan (phases / dispatch policy / tool budgets / success+kill criteria); planner agent + `nexusrecon plan` for NL→Strategy. |
-| **Dispatch policies** | `LitePolicy` / `FullPolicy` / `OffPolicy` + plugin | Pluggable per-phase caps + eligibility. Community packs ship custom policies. |
-| **Simulation** | `simulate_dispatch_plan` | Cheap pre-execution cost + graph-growth + scope-creep forecast for every dispatch; opt-in gating. |
-| **Bounded agency** | `route_plan_items` | Deep-pivot per-item policy escalation + human-approval queue for high-tier items. |
-| **Strategic audit** | `AuditLog` decision methods | Every strategic decision (plan, replan, dispatch policy, simulation, deep-pivot, human approval) is hash-chained. |
+| **Strategy + planner** _(partial)_ | `nexusrecon.strategy` | Planner + `Strategy` dataclass + `nexusrecon plan` exist. **Dispatch policies are real**; budgets / success+kill criteria are largely **unread** on the run path (ROADMAP demotion). |
+| **Dispatch policies** | `LitePolicy` / `FullPolicy` / `OffPolicy` + plugin | Pluggable per-phase caps + eligibility — this is the durable Strategy surface. |
+| **Simulation** _(demoted)_ | `simulate_dispatch_plan` | Forecast helper; often `$0.00` without `cost_per_run_usd`; abort not enforced by default. |
+| **Bounded agency** _(demoted)_ | `route_plan_items` | Queue helpers exist; **no production approval resolver** on the default run. |
+| **Strategic audit** | `AuditLog` decision methods | Hash-chained strategic event types when callers write them. |
 | **Corroboration engine** _(experimental, not wired)_ | `CorroborationEngine` verifier | Confidence lift when multi-source independence-classes (passive_dns + cert + active_probe + …) agree on an entity. |
 | **Contradiction detector** _(experimental, not wired)_ | `ContradictionDetector` verifier | Sticky-field + exclusive-relationship conflicts → bounded downgrade + queued for human review. |
 | **Confidence propagation** _(experimental, not wired)_ | `ConfidencePropagator` verifier | Downgrades cascade through `cites` / `belongs_to` / `part_of` edges with depth decay + cycle protection. |
@@ -471,47 +469,48 @@ Per-key tool-unlock matrix:
 
 ## Status
 
-**v0.7.0, beta.** The three core bets of the post-0.5 transformation
-(Living Graph foundation, Strategic Reasoning Engine, Contribution &
-Pack format) and the intent-driven entry + STIX export/import +
-downstream emitters ship in this release. The Continuous Confidence
-Engine is built and unit-tested but stays experimental and opt-in
-(not wired into a default run; see ROADMAP item 8). Four of five
-moonshot capabilities are in place (Watch Mode, Signed Bundles,
-Adversarial Defense, Vision). Fleet-Level Learning is open for design
-discussion.
+**v0.7.0, beta.** Honesty-aligned with ROADMAP (2026-06-09 demotion
+pass). The default `nexusrecon run` story is the Living Graph +
+phase pipeline + dispatch loop + ranked reports + signed STIX path.
+Several post-0.5 packages remain in-tree and unit-tested but are
+**demoted** from the 1.0 marquee until they are wired or redesigned
+(see ROADMAP “Demoted out of the 1.0 story”).
 
-**Test suite: full suite green.**
+**Test suite: full suite green** on the assurance baseline; live
+collector coverage still depends on keys/binaries.
 
-What's stable:
+What's stable on the default path:
 
 - 12-phase pipeline + credential harvest + pretext intelligence
-- Living Intelligence Graph with provenance, confidence, and
-  mutation events
-- Strategic engine: planner, dispatch policies, simulation, bounded
-  agency
-- Recon Pack format with SDK scaffolders for agents / tools / policies
-- STIX 2.1 export + Ed25519 signed receipts + standalone verifier
-- Bidirectional import (STIX, Nessus, Nuclei, CSV) + Burp first-party
-  pack
-- Watch mode with diff-driven + polling sensors and tiered actions
-- Adversarial platform self-defense (poisoned data, tool patterns,
-  inconsistency, prompt injection)
-- Vision pipeline (screenshots, PDFs, QR codes; strategy-budgeted)
+- Living Intelligence Graph with confidence, edges, and mutation
+  events (provenance writers incomplete — do not overclaim)
+- Reflection + dynamic dispatcher (lite/full/off policies + caps)
+- STIX 2.1 export + Ed25519 signed receipts + packaged verifier
+  asset
+- Adversarial CLI scan (`nexusrecon adversarial`) when invoked
+- Hash-chained audit log + scope gate
 
-What's still moving:
+What's demoted / experimental (in-tree; not default-run product):
 
-- Continuous Confidence Engine (corroboration, contradiction,
-  propagation, adversarial self-check): in-tree and unit-tested, but
-  experimental and opt-in, not wired into a default run (ROADMAP item 8)
+- Strategy framing beyond the real dispatch loop — criteria,
+  budgets, simulation abort, and approval resolver are largely
+  unread (ROADMAP demotion)
+- Recon Packs marketplace + Contribution SDK — empty marketplace
+  URL; first-party pack not on default load path
+- Watch Mode — snapshot-diff of frozen `state.json`, not live
+  monitoring
+- Vision pipeline — standalone CLI; default budget 0; campaign does
+  not feed it
+- Continuous Confidence Engine — unit-tested, not wired into a
+  default run (ROADMAP item 8)
+- Downstream emitters/importers — post-run manual; STIX path kept
+
+What's still moving / design-only:
+
 - Fleet-Level Learning (privacy-preserving cross-campaign patterns)
-- TUI surfaces for the new Watch / Intent / Vision flows (the
-  underlying capabilities ship; TUI tabs land as community pull
-  warrants)
-- Auto-dispatch of high-severity micro-campaigns (opt-in flag exists
-  in storage; wiring deferred)
-- Curated marketplace content (index format + search ship; canonical
-  hosted content is operator / community curated)
+- TUI surfaces for Watch / Intent / Vision
+- Auto-dispatch of high-severity micro-campaigns
+- Curated marketplace content
 
 If you want to help shape the 1.0, see
 [`BETA_TESTING_GUIDE.md`](BETA_TESTING_GUIDE.md) or
