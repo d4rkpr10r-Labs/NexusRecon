@@ -13,11 +13,12 @@ import hashlib
 import json
 import random
 import time
+from collections.abc import Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar, Token
 from dataclasses import dataclass
 from functools import lru_cache
-from typing import TYPE_CHECKING, Any, Iterator
+from typing import TYPE_CHECKING, Any
 
 import structlog
 
@@ -89,9 +90,11 @@ class ToolRegistry:
     """
     Shared tool catalog — use get_registry().
 
-    Tool instances are process-global (``@register_tool``). Campaign
-    services (scope, cache, audit, OPSEC) live in a ``ContextVar`` so
-    concurrent campaigns do not stomp each other (NEX-11).
+    Tool instances are process-global (``@register_tool``). On the shared
+    catalog, campaign services (scope, cache, audit, OPSEC) also live in
+    a task-local ``ContextVar`` so concurrent campaigns do not stomp each
+    other (NEX-11). Private ``ToolRegistry()`` fixtures keep instance-local
+    binds only.
 
     OPSEC enforcement (rate limiter + proxy manager) is applied at
     execute() time when ``set_campaign_context`` has been called with a
@@ -115,9 +118,18 @@ class ToolRegistry:
         # Cap per-tool history at 50 entries. Cheap; the typical
         # campaign fires each tool a handful of times.
         self._invocation_history_cap: int = 50
-        # Token from the most recent set_campaign_context in *this*
-        # task; clear_campaign_context resets it when still owned.
+        # Instance-local bind for private ToolRegistry() objects (tests /
+        # fixtures). The process singleton also mirrors into ContextVar.
+        self._local_bind: _CampaignBind | None = None
+        # Token from the most recent ContextVar set on the singleton.
         self._campaign_bind_token: Token | None = None
+
+    def _is_shared_catalog(self) -> bool:
+        """True when this instance is the process-wide get_registry() catalog."""
+        try:
+            return self is get_registry()
+        except Exception:
+            return False
 
     def set_campaign_context(
         self,
@@ -143,8 +155,10 @@ class ToolRegistry:
         tool.run() and the proxy URL is propagated to the tool via the
         ``proxy_context`` ContextVar.
 
-        NEX-11: the bind is stored in a ``ContextVar``, not on the
-        process-global registry instance, so parallel campaigns isolate.
+        NEX-11: on the shared ``get_registry()`` catalog the bind is also
+        stored in a task-local ``ContextVar`` so parallel campaigns isolate.
+        Private ``ToolRegistry()`` instances (tests) keep instance-local
+        binds only, so two fixtures in one task do not clobber each other.
         """
         bind = _CampaignBind(
             scope_guard=scope_guard,
@@ -154,24 +168,33 @@ class ToolRegistry:
             rate_limiter=rate_limiter,
             proxy_manager=proxy_manager,
         )
-        self._campaign_bind_token = _campaign_bind.set(bind)
+        self._local_bind = bind
+        if self._is_shared_catalog():
+            self._campaign_bind_token = _campaign_bind.set(bind)
+        else:
+            self._campaign_bind_token = None
 
     def clear_campaign_context(self) -> None:
         """Detach campaign services for the current task (campaign end / tests)."""
+        self._local_bind = None
         token = self._campaign_bind_token
         self._campaign_bind_token = None
+        if not self._is_shared_catalog():
+            return
         if token is not None:
             try:
                 _campaign_bind.reset(token)
                 return
             except ValueError:
-                # Token was set in a different context; fall through.
                 pass
         _campaign_bind.set(None)
 
     def _bind(self) -> _CampaignBind:
-        return _campaign_bind.get() or _CampaignBind()
-
+        if self._is_shared_catalog():
+            ctx = _campaign_bind.get()
+            if ctx is not None:
+                return ctx
+        return self._local_bind or _CampaignBind()
     @property
     def _scope_guard(self) -> Any:
         return self._bind().scope_guard
