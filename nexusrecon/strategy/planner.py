@@ -123,16 +123,7 @@ def _build_planner_prompt(
         '  "rationale": "one-paragraph explanation of the choices",\n'
         '  "phases": ["phase1", "phase2", ...],\n'
         '  "dispatch_policy_name": "lite|full|off",\n'
-        '  "tool_budgets": {"shodan": 10, "category:cloud": 25},\n'
-        '  "success_criteria": [\n'
-        '    {"metric": "confirmed_leads", "op": ">=", "threshold": 5,\n'
-        '     "description": "Why this matters"}\n'
-        "  ],\n"
-        '  "kill_criteria": [\n'
-        '    {"metric": "llm_cost_usd", "op": ">", "threshold": 20.0,\n'
-        '     "action": "pause_for_review",\n'
-        '     "description": "Why this matters"}\n'
-        "  ]\n"
+        '  "tool_budgets": {"vision_calls": 3}\n'
         "}\n"
         "```\n\n"
         "CONSTRAINTS:\n"
@@ -145,8 +136,13 @@ def _build_planner_prompt(
         "- Phase identifiers MUST come from the canonical set:\n"
         "  phase1, phase2, phase2_5, phase3, phase4, phase5,\n"
         "  phase6, phase7, phase7_5, phase7_7, phase8, phase9.\n"
-        "- Keep `tool_budgets` empty if you don't have a strong\n"
-        "  reason to constrain a specific tool.\n"
+        "- `dispatch_policy_name` IS enforced on the run path.\n"
+        "- `tool_budgets`: only `vision_calls` is enforced today\n"
+        "  (Vision CLI). Leave the dict empty unless setting that\n"
+        "  key. Other budget keys are advisory and unread.\n"
+        "- Do NOT author `success_criteria` or `kill_criteria`.\n"
+        "  Those Strategy fields are demoted / not enforced on\n"
+        "  the run path (NEX-15 / F-008); omit them from the JSON.\n"
     )
 
 
@@ -236,6 +232,12 @@ def _coerce_to_strategy(
     if isinstance(rationale, str) and rationale.strip():
         metadata["planner_rationale"] = rationale.strip()
     metadata["planner_response_kind"] = "structured"
+    # NEX-15 / F-008: criteria may still arrive from older prompts or
+    # operator-authored strategy.json — keep them for audit, but mark
+    # advisory so nothing pretends they gate the run.
+    if success_criteria or kill_criteria:
+        metadata["criteria_enforced"] = False
+        metadata["criteria_status"] = "advisory"
 
     return Strategy(
         name=str(parsed.get("name") or "planner_generated"),

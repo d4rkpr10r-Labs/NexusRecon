@@ -384,9 +384,15 @@ def run(
             console.print(
                 f"Tool budgets:         [cyan]{strategy.tool_budgets}[/cyan]"
             )
+            if any(k != "vision_calls" for k in strategy.tool_budgets):
+                console.print(
+                    "[dim]  (only vision_calls is enforced today; "
+                    "other budget keys are advisory)[/dim]"
+                )
         if strategy.success_criteria:
             console.print(
-                f"Success criteria ({len(strategy.success_criteria)}):"
+                f"Success criteria ({len(strategy.success_criteria)}) "
+                f"[yellow]advisory — not enforced[/yellow]:"
             )
             for sc in strategy.success_criteria:
                 console.print(
@@ -395,7 +401,8 @@ def run(
                 )
         if strategy.kill_criteria:
             console.print(
-                f"Kill criteria ({len(strategy.kill_criteria)}):"
+                f"Kill criteria ({len(strategy.kill_criteria)}) "
+                f"[yellow]advisory — not enforced[/yellow]:"
             )
             for kc in strategy.kill_criteria:
                 console.print(

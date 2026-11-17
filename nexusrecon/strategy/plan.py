@@ -25,12 +25,13 @@ What lives in a Strategy
 - ``phases``: ordered list of phase identifiers to run.
 - ``dispatch_policy_name``: which
   :class:`~nexusrecon.strategy.policy.DispatchPolicy` to use.
-- ``tool_budgets``: per-tool / per-category caps on invocations.
-- ``success_criteria``: what makes the campaign "done early"
-  (e.g. "≥5 confirmed leads with severity >= high").
-- ``kill_criteria``: when to abort (e.g. "no findings after
-  phase 4" or "LLM cost crossed $20 and no high-severity
-  finding").
+- ``tool_budgets``: per-tool / per-category caps. **Enforced
+  today:** only ``vision_calls`` (Vision CLI). Other keys are
+  advisory / unread on the default run path (NEX-15 / F-008).
+- ``success_criteria`` / ``kill_criteria``: **demoted /
+  advisory.** Authored into Strategy objects for audit /
+  plan-only preview but **not evaluated** on the run path.
+  The planner prompt no longer asks for them.
 - ``metadata``: free-form bag for planner notes, operator
   comments, etc.
 
@@ -56,11 +57,10 @@ class SuccessCriterion:
     Example: ``SuccessCriterion(metric="confirmed_leads",
     op=">=", threshold=5, scope={"min_severity": "high"})``.
 
-    Evaluation happens at phase boundaries. When any criterion
-    fires the reflection node may decide to short-circuit the
-    workflow (operator-configurable; default is to log + keep
-    going, since short-circuiting an in-flight campaign loses
-    coverage)."""
+    **Not enforced (NEX-15 / F-008).** Kept for plan-only
+    preview and audit; the run path does not evaluate these
+    at phase boundaries. Prefer dispatch policy + scope tier
+    for real control."""
 
     metric: str
     """Which state field / graph query to evaluate. Resolution
@@ -75,11 +75,14 @@ class SuccessCriterion:
 
 @dataclass
 class KillCriterion:
-    """One condition that, when met, signals the campaign should
-    abort (or pause for human review).
+    """One condition that, when met, would signal abort / pause.
 
     Example: ``KillCriterion(metric="llm_cost_usd", op=">",
     threshold=20.0, scope={"and": "no_high_finding"})``.
+
+    **Not enforced (NEX-15 / F-008).** Advisory / demoted —
+    use ``--abort-on-checkpoint-failure`` and scope tier for
+    hard stops that actually fire today.
     """
 
     metric: str
