@@ -30,7 +30,7 @@ Ordered by dependency. Items marked **done-on-branch** are in `cursor/assurance-
 
 ## P4 — Differentiation bets (STRATEGY)
 
-14. Provenance writers on default path + report surfacing — *done (NEX-19); audit evidence_hash join still deferred*.
+14. Provenance writers on default path + report surfacing — *done (NEX-19); audit evidence_hash join done (NEX-28)*.
 15. Replayable fixture benchmarks (recall, provenance completeness, restart hash) — *harness done (NEX-20); attribution/wall-clock follow-ups deferred*.
 16. Ingest BBOT/Amass graphs rather than reimplementing recursive DNS — *adapters + CLI done (NEX-21)*.
 17. Defer: marketplace, Vision autonomy, fleet learning.

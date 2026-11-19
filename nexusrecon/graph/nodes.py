@@ -110,10 +110,18 @@ async def phase1_passive_footprinting(state: CampaignGraphState) -> CampaignGrap
                 continue
             for sub in result.data.get("subdomains", []):
                 sub_name = sub.get("subdomain", sub) if isinstance(sub, dict) else sub
-                if sub_name and sub_name not in subdomain_intel:
+                if not sub_name:
+                    continue
+                if sub_name not in subdomain_intel:
                     subdomain_intel[sub_name] = {"sources": [result.source]}
-                elif sub_name:
+                else:
                     subdomain_intel[sub_name]["sources"].append(result.source)
+                # Join audit response_hash onto the intel record so
+                # EntityGraph.from_state can stamp ProvenanceRecord.evidence_hash.
+                if result.response_hash:
+                    subdomain_intel[sub_name].setdefault(
+                        "evidence_hashes", {},
+                    )[result.source] = result.response_hash
 
         # DNS, WHOIS, ASN — parallel
         dns_r, whois_r, asn_r = await asyncio.gather(
@@ -220,7 +228,10 @@ async def phase2_identity_cloud(state: CampaignGraphState) -> CampaignGraphState
         result = await registry.execute("theharvester", seed, "domain")
         if result.success:
             for em in result.data.get("emails", []):
-                email_intel["emails"][em] = {"source": "theharvester", "domain": seed}
+                rec: dict[str, Any] = {"source": "theharvester", "domain": seed}
+                if result.response_hash:
+                    rec["evidence_hash"] = result.response_hash
+                email_intel["emails"][em] = rec
 
         # Hunter.io
         result = await registry.execute("hunter", seed, "domain")
@@ -228,11 +239,14 @@ async def phase2_identity_cloud(state: CampaignGraphState) -> CampaignGraphState
             for em in result.data.get("emails", []):
                 email_val = em.get("email")
                 if email_val:
-                    email_intel["emails"][email_val] = {
+                    rec = {
                         "source": "hunter",
                         "position": em.get("position"),
                         "department": em.get("department"),
                     }
+                    if result.response_hash:
+                        rec["evidence_hash"] = result.response_hash
+                    email_intel["emails"][email_val] = rec
 
     # Email format inference
     emails = list(email_intel["emails"].keys())

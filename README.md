@@ -53,8 +53,9 @@ ROADMAP “Demoted out of the 1.0 story”):
    question) is a first-class node with confidence, citations, and
    traversable relationships. Agents reason over the graph instead of
    flat dictionaries. Per-source ``ProvenanceRecord`` writers stamp
-   on the default ``from_state`` path (NEX-19); audit ``evidence_hash``
-   joins remain a follow-up.
+   on the default ``from_state`` path (NEX-19); when a tool result is
+   audited, its ``response_hash`` is joined into
+   ``ProvenanceRecord.evidence_hash`` (NEX-28).
 2. **Dispatch loop**: `reflection_node` + the dynamic dispatcher
    select follow-up tools between phases under lite/full/off
    policies. This loop is what earns its keep on a default run.
