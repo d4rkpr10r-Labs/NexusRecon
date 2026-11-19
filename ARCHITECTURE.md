@@ -707,8 +707,9 @@ Concretely:
   `from_dict()`; schema version pinned in `GRAPH_SCHEMA_VERSION`.
 
 **Out of scope.** Versioning / time-travel (deferred per the
-architecture lock-in during Phase 0.1); a graph database backend
-(NetworkX in-memory still covers the campaign sizes operators see).
+architecture lock-in during Phase 0.1); a graph database / external
+index backend (NetworkX + `state.json` until measured scale warrants
+revisit — see [`docs/adr/0001-graph-store-defer-external-index.md`](docs/adr/0001-graph-store-defer-external-index.md)).
 
 ---
 
