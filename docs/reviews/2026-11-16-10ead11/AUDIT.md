@@ -75,7 +75,7 @@ Default campaign tooling, graph merge, reporting, and unit/integration suites ar
 ### F-008 — Strategy criteria unread / simulation $0
 - **Severity:** Medium (misleading Strategy product)
 - **Evidence:** ROADMAP Demoted; simulation uses unset `cost_per_run_usd`.
-- **Fix:** Applied as demotion (NEX-15) — planner prompt no longer asks for `success_criteria` / `kill_criteria`; plan-only CLI labels them advisory; only `dispatch_policy_name` + `vision_calls` budget documented as enforced. Full criteria enforcement deferred.
+- **Fix:** Applied as demotion (NEX-15 + NEX-30) — planner task prompt and CrewAI planner persona no longer ask for `success_criteria` / `kill_criteria`; plan-only CLI labels leftovers advisory; Strategy field docs match; only `dispatch_policy_name` + `vision_calls` budget documented as enforced. Full criteria enforcement deferred (not cheap).
 - **Residual:** Simulation `$0.00` when tools lack `cost_per_run_usd` still soft.
 
 ### F-009 — Verifier script absent from wheel

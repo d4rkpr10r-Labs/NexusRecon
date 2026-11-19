@@ -5,6 +5,17 @@ All notable changes to NexusRecon land here. Format loosely follows
 follow [SemVer](https://semver.org/) with the pre-1.0 caveat that
 minor bumps (0.x → 0.x+1) may break APIs.
 
+## [Unreleased]
+
+### Docs honesty
+
+- **Strategy criteria persona demotion** (NEX-30 / F-008): CrewAI
+  `campaign_planner` role/goal/backstory no longer asks for unread
+  `success_criteria` / `kill_criteria`; Strategy field docs match the
+  advisory status. Prefer honesty over full run-path enforcement
+  (deferred — free-form metric evaluation is not cheap). Completes
+  the NEX-15 planner-prompt demotion.
+
 ## [0.8.0]: 2026-11-17
 
 Post-consultation release: platform reliability, campaign continuity,

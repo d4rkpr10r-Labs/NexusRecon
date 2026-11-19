@@ -789,13 +789,14 @@ run unsandboxed per the locked-in trust model).
 
 ## 15. Strategic Reasoning Engine (Phase 1)
 
-**Status (honesty / NEX-15 demotion):** Keep the **dispatch loop**
-(`reflection_node` + dynamic dispatcher + lite/full/off policies) —
-that path is real on a default run. `dispatch_policy_name` is
-enforced; `tool_budgets["vision_calls"]` is enforced for Vision.
-`kill_criteria` / `success_criteria` / other budget keys are
-**demoted**: the planner prompt no longer asks for them (NEX-15 /
-F-008); plan-only output labels leftovers as advisory. Pre-flight
+**Status (honesty / NEX-15 + NEX-30 demotion):** Keep the **dispatch
+loop** (`reflection_node` + dynamic dispatcher + lite/full/off
+policies) — that path is real on a default run.
+`dispatch_policy_name` is enforced; `tool_budgets["vision_calls"]`
+is enforced for Vision. `kill_criteria` / `success_criteria` /
+other budget keys are **demoted**: planner task prompt and CrewAI
+planner persona no longer ask for them (NEX-15 / NEX-30 / F-008);
+plan-only output labels leftovers as advisory. Pre-flight
 simulation often estimates `$0.00` when tools lack
 `cost_per_run_usd`. The bounded-agency approval queue has **no
 production resolver**. Treat criteria/simulation/approvals as

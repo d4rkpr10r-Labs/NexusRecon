@@ -284,9 +284,10 @@ can be promoted later if a real need appears.
 - **Strategy framing (`strategy/`).** Keep the dispatch loop (`reflection_node`
   plus the dynamic dispatcher is real and earns its keep). Demote the rest: the
   pre-flight simulation always estimates $0.00 and never enforces its abort,
-  `kill_criteria`/`success_criteria`/`tool_budgets` are never read, and the
-  bounded-agency approval queue has no resolver. That is a roadmap, not a
-  feature.
+  `kill_criteria`/`success_criteria`/non-`vision_calls` `tool_budgets` are not
+  evaluated on the run path (planner persona demoted NEX-15/NEX-30; only
+  `dispatch_policy_name` + `vision_calls` enforced), and the bounded-agency
+  approval queue has no resolver. That is a roadmap, not a feature.
 - **Vision pipeline (`vision/`).** Real multimodal code, but defanged by a
   default `vision_calls` budget of 0 and fed only by hand-supplied artifacts a
   campaign never produces. Keep as a standalone utility; drop it from the

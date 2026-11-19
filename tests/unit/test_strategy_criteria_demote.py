@@ -1,6 +1,12 @@
-"""NEX-15 / F-008: unread Strategy criteria demoted from planner prompts."""
+"""NEX-15 / NEX-30 / F-008: unread Strategy criteria demoted from planner."""
 from __future__ import annotations
 
+from nexusrecon.agents.planner import (
+    PLANNER_BACKSTORY,
+    PLANNER_GOAL,
+    PLANNER_ROLE,
+    PLANNER_SYSTEM_PROMPT,
+)
 from nexusrecon.strategy.plan import KillCriterion, Strategy, SuccessCriterion
 from nexusrecon.strategy.planner import _build_planner_prompt, _coerce_to_strategy
 
@@ -20,6 +26,25 @@ def test_planner_prompt_omits_criteria_schema():
     # Real control plane still documented.
     assert "dispatch_policy_name" in prompt
     assert "vision_calls" in prompt
+
+
+def test_crewai_planner_persona_omits_criteria():
+    """NEX-30: agent identity is prepended to the LLM context — must
+    not reintroduce success/kill criteria after the task-prompt demotion."""
+    blob = "\n".join(
+        [PLANNER_ROLE, PLANNER_GOAL, PLANNER_BACKSTORY, PLANNER_SYSTEM_PROMPT]
+    )
+    assert "Do NOT author success_criteria" in PLANNER_SYSTEM_PROMPT
+    assert "Do not invent success_criteria" in PLANNER_GOAL
+    # Old persona phrasing that asked the model to invent criteria.
+    assert "clear success criteria" not in blob.lower()
+    assert "Success criteria (minimum findings" not in blob
+    assert "Kill criteria (conditions to stop" not in blob
+    for banned in ('"success_criteria"', '"kill_criteria"'):
+        assert banned not in blob
+    # Still describes the real control plane.
+    assert "dispatch" in blob.lower()
+    assert "vision_calls" in blob
 
 
 def test_coerce_marks_legacy_criteria_advisory():

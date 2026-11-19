@@ -537,10 +537,11 @@ What's stable on the default path:
 
 What's demoted / experimental (in-tree; not default-run product):
 
-- Strategy framing beyond the real dispatch loop — planner no
-  longer authors unread kill/success criteria (NEX-15); only
-  dispatch policy + `vision_calls` budget are enforced; simulation
-  abort / approval resolver remain demoted
+- Strategy framing beyond the real dispatch loop — planner task
+  prompt + CrewAI persona no longer author unread kill/success
+  criteria (NEX-15 / NEX-30); only dispatch policy + `vision_calls`
+  budget are enforced; simulation abort / approval resolver remain
+  demoted
 - Recon Packs marketplace + Contribution SDK — empty marketplace
   URL; `packs/burp` checkout dogfood only (not in wheel / not
   default load path; NEX-17 decision)
