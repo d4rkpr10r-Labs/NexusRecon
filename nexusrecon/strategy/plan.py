@@ -29,9 +29,10 @@ What lives in a Strategy
   today:** only ``vision_calls`` (Vision CLI). Other keys are
   advisory / unread on the default run path (NEX-15 / F-008).
 - ``success_criteria`` / ``kill_criteria``: **demoted /
-  advisory.** Authored into Strategy objects for audit /
+  advisory.** May still appear in older strategy.json for audit /
   plan-only preview but **not evaluated** on the run path.
-  The planner prompt no longer asks for them.
+  Planner task prompt + CrewAI planner persona omit them
+  (NEX-15 / NEX-30 / F-008).
 - ``metadata``: free-form bag for planner notes, operator
   comments, etc.
 
@@ -129,14 +130,15 @@ class Strategy:
     Example: ``{"shodan": 10, "category:cloud": 25}``."""
 
     success_criteria: list[SuccessCriterion] = field(default_factory=list)
-    """When ANY of these fire, the reflection node can opt to
-    short-circuit. None today → run to completion."""
+    """Advisory only (NEX-15 / NEX-30 / F-008). Kept for plan-only
+    preview and audit when an older strategy.json still carries
+    them; the run path does not evaluate these. Empty by default."""
 
     kill_criteria: list[KillCriterion] = field(default_factory=list)
-    """When ANY of these fire, the reflection node aborts or
-    pauses (per criterion ``action``). Default empty so
-    existing campaigns aren't affected; operators populate
-    these for production work."""
+    """Advisory only (NEX-15 / NEX-30 / F-008). Kept for audit /
+    plan-only preview; not evaluated at phase boundaries. Prefer
+    ``--abort-on-checkpoint-failure`` and scope tier for hard stops
+    that actually fire today. Empty by default."""
 
     metadata: dict[str, Any] = field(default_factory=dict)
     """Free-form bag for planner notes, operator comments,
