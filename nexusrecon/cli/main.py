@@ -2285,7 +2285,6 @@ def watch_create(
     """Create a watch (default: re-collect seeds then fingerprint)."""
     from nexusrecon.watch import (
         SUPPORTED_WATCH_MODES,
-        WATCH_MODE_RECOLLECT,
         WATCH_MODE_SNAPSHOT,
         ScopeSensor,
         Sensor,
