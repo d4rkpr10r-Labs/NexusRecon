@@ -5,13 +5,10 @@ Public entry points
 - :func:`tick(watch_id)` — run one pass.
 - :func:`list_watches()` — enumerate configured watches.
 
-**Mode (NEX-14 / F-006):** the default (and only supported)
-loader rebuilds the campaign graph from frozen ``state.json``.
-``tick`` therefore performs a **snapshot-diff** — fingerprints
-change only after a new campaign run rewrites the checkpoint.
-It is not live continuous monitoring. A future ``recollect``
-mode may re-run seed collectors before fingerprinting; that
-path is not wired yet.
+**Mode (NEX-29 / F-006):** default ``recollect`` re-runs seed
+collectors (crt.sh vertical slice), materialises a stable-id
+graph, then fingerprints / diffs. ``snapshot`` remains an
+explicit opt-in that fingerprints frozen ``state.json`` only.
 
 The runner deliberately does NOT loop. The operator either
 calls ``tick`` from cron / systemd timer (the typical
@@ -38,6 +35,8 @@ from nexusrecon.watch.severity import (
     diff_graphs,
 )
 from nexusrecon.watch.storage import (
+    WATCH_MODE_RECOLLECT,
+    WATCH_MODE_SNAPSHOT,
     Watch,
     WatchStorage,
     resolve_watch_dir,
@@ -57,9 +56,9 @@ class TickResult:
 
     watch_id: str
     timestamp: str
-    mode: str = "snapshot"
-    """Effective graph source: always ``snapshot`` today (frozen
-    state.json). Surfaced so CLI/operators see the honesty label."""
+    mode: str = WATCH_MODE_RECOLLECT
+    """Effective graph source: ``recollect`` (default) or
+    ``snapshot`` (frozen state.json opt-in)."""
     sensors_evaluated: int = 0
     sensors_fired: int = 0
     actions: list[ActionResult] = field(default_factory=list)
@@ -87,25 +86,26 @@ def tick(
     *,
     watch_root: Path | str | None = None,
     graph_loader: Any | None = None,
+    seed_collector: Any | None = None,
     severity_config: SeverityConfig | None = None,
     now: datetime | None = None,
 ) -> TickResult:
     """Run one pass of the watch's sensors.
 
     ``graph_loader`` is an injectable callable
-    ``(campaign_id) -> EntityGraph`` so tests can swap in a
-    fake without touching the campaign filesystem.
-    Production callers leave it ``None`` to use the default
-    frozen-``state.json`` snapshot loader.
-    """
-    from nexusrecon.watch.storage import WATCH_MODE_SNAPSHOT
+    ``(campaign_id) -> EntityGraph``. When provided it short-circuits
+    both recollect and snapshot loaders (tests).
 
+    ``seed_collector`` is an injectable
+    ``(seeds, watch) -> EntityGraph`` used only on the recollect
+    path when ``graph_loader`` is unset.
+    """
     now = now or datetime.now(UTC)
     storage = WatchStorage(watch_id, root=watch_root)
     result = TickResult(
         watch_id=watch_id,
         timestamp=now.isoformat(),
-        mode=WATCH_MODE_SNAPSHOT,
+        mode=WATCH_MODE_RECOLLECT,
     )
 
     try:
@@ -114,10 +114,14 @@ def tick(
         result.errors.append(str(exc))
         return result
 
-    result.mode = getattr(watch, "mode", None) or WATCH_MODE_SNAPSHOT
+    result.mode = getattr(watch, "mode", None) or WATCH_MODE_RECOLLECT
 
     try:
-        graph = (graph_loader or _default_graph_loader)(watch.campaign_id)
+        graph = _load_graph_for_tick(
+            watch,
+            graph_loader=graph_loader,
+            seed_collector=seed_collector,
+        )
     except Exception as exc:
         result.errors.append(
             f"graph load failed for campaign "
@@ -191,10 +195,33 @@ def tick(
         )
 
     storage.append_tick_log(
-        f"tick complete evaluated={result.sensors_evaluated} "
+        f"tick complete mode={result.mode} "
+        f"evaluated={result.sensors_evaluated} "
         f"fired={result.sensors_fired}"
     )
     return result
+
+
+def _load_graph_for_tick(
+    watch: Watch,
+    *,
+    graph_loader: Any | None,
+    seed_collector: Any | None,
+) -> Any:
+    """Select snapshot vs recollect loader for this tick."""
+    if graph_loader is not None:
+        return graph_loader(watch.campaign_id)
+
+    mode = getattr(watch, "mode", None) or WATCH_MODE_RECOLLECT
+    if mode == WATCH_MODE_SNAPSHOT:
+        return _default_graph_loader(watch.campaign_id)
+
+    from nexusrecon.watch.recollect import load_recollect_graph
+
+    return load_recollect_graph(
+        watch,
+        seed_collector=seed_collector,
+    )
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -227,40 +254,23 @@ def list_watches(
 
 
 # ──────────────────────────────────────────────────────────────────────
-# Default graph loader
+# Default graph loader (snapshot mode)
 # ──────────────────────────────────────────────────────────────────────
 
 
 def _default_graph_loader(campaign_id: str):
-    """Snapshot loader (the only production path today).
+    """Snapshot loader — frozen ``state.json`` only.
 
-    Walks the campaign output dir for ``state.json`` and rebuilds
-    the EntityGraph via ``from_state``. This is a **frozen
-    checkpoint** — it does not re-collect seeds or call tools.
-    Fingerprints therefore only change after a subsequent
-    ``nexusrecon run`` / resume writes a new state.json (F-006).
+    Used when ``Watch.mode == snapshot``. Rebuilds the EntityGraph
+    with stable ids so fingerprints survive reload across ticks.
     """
-    import json
-
-    from nexusrecon.core.config import get_config
     from nexusrecon.core.entity_graph import EntityGraph
+    from nexusrecon.watch.recollect import load_campaign_state
 
-    config = get_config()
-    output_dir = Path(config.output_dir)
-    state_path: Path | None = None
-    for candidate in output_dir.rglob(campaign_id):
-        if candidate.is_dir():
-            sp = candidate / "state.json"
-            if sp.exists():
-                state_path = sp
-                break
-    if state_path is None:
-        raise FileNotFoundError(
-            f"campaign {campaign_id!r} state.json not found"
-        )
-    data = json.loads(state_path.read_text(encoding="utf-8"))
+    data = load_campaign_state(campaign_id)
     return EntityGraph.from_state(
         data,
-        campaign_id=data.get("campaign_id", ""),
+        campaign_id=data.get("campaign_id", campaign_id),
         engagement_id=data.get("engagement_id", ""),
+        stable_ids=True,
     )

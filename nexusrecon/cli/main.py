@@ -2230,12 +2230,11 @@ def ingest_amass(
 
 watch_app = typer.Typer(
     help=(
-        "Snapshot-diff watches (not live monitoring): each tick "
-        "fingerprints a campaign's frozen state.json and fires "
-        "alerts / queued micro-campaigns when that checkpoint "
-        "digest changes. Digests only move after a new "
-        "`nexusrecon run` / resume. Live re-collection is not "
-        "implemented (F-006 / NEX-14)."
+        "Watch Mode: each tick re-collects campaign seeds "
+        "(crt.sh vertical slice by default), fingerprints the "
+        "fresh graph, and fires alerts / queued micro-campaigns "
+        "on digest change. Pass --snapshot for frozen "
+        "state.json-only diff (NEX-29 / F-006)."
     ),
 )
 app.add_typer(watch_app, name="watch")
@@ -2246,13 +2245,13 @@ def watch_create(
     watch_id: str = typer.Argument(..., help="Stable id for this watch."),
     campaign_id: str = typer.Argument(
         ...,
-        help="Campaign id whose frozen state.json will be fingerprinted.",
+        help="Campaign id whose seeds / state.json back this watch.",
     ),
     parent_domain: str | None = typer.Option(
         None, "--parent-domain",
         help=(
             "ScopeSensor: watch every subdomain of this "
-            "parent domain."
+            "parent domain (also used as a recollect seed)."
         ),
     ),
     entity_type: str | None = typer.Option(
@@ -2267,10 +2266,26 @@ def watch_create(
             "sensor flags."
         ),
     ),
+    mode: str = typer.Option(
+        "recollect",
+        "--mode",
+        help=(
+            "Graph source: 'recollect' (default — re-run seed "
+            "collectors then fingerprint) or 'snapshot' "
+            "(frozen state.json only)."
+        ),
+    ),
+    snapshot: bool = typer.Option(
+        False,
+        "--snapshot",
+        help="Shortcut for --mode snapshot (frozen state.json diff).",
+    ),
     description: str = typer.Option("", "--description"),
 ) -> None:
-    """Create a snapshot-diff watch over a campaign's frozen state.json."""
+    """Create a watch (default: re-collect seeds then fingerprint)."""
     from nexusrecon.watch import (
+        SUPPORTED_WATCH_MODES,
+        WATCH_MODE_RECOLLECT,
         WATCH_MODE_SNAPSHOT,
         ScopeSensor,
         Sensor,
@@ -2303,6 +2318,14 @@ def watch_create(
         )
         raise typer.Exit(1)
 
+    chosen_mode = WATCH_MODE_SNAPSHOT if snapshot else mode.strip().lower()
+    if chosen_mode not in SUPPORTED_WATCH_MODES:
+        console.print(
+            f"[red]Unknown mode {chosen_mode!r}.[/red] "
+            f"Use one of: {', '.join(sorted(SUPPORTED_WATCH_MODES))}"
+        )
+        raise typer.Exit(1)
+
     storage = WatchStorage(watch_id)
     if storage.exists():
         console.print(
@@ -2315,21 +2338,33 @@ def watch_create(
         campaign_id=campaign_id,
         sensors=sensors,
         description=description,
-        mode=WATCH_MODE_SNAPSHOT,
+        mode=chosen_mode,
     )
     storage.save_watch(watch)
+    if chosen_mode == WATCH_MODE_SNAPSHOT:
+        mode_note = (
+            "[dim](frozen state.json snapshot-diff)[/dim]\n\n"
+            "[yellow]Note:[/yellow] ticks fingerprint the last "
+            "campaign checkpoint — not live re-collection."
+        )
+    else:
+        mode_note = (
+            "[dim](re-collect seeds then fingerprint)[/dim]\n\n"
+            "[yellow]Note:[/yellow] each tick re-runs seed collectors "
+            f"(default: crt.sh) before fingerprinting. Use "
+            f"[bold]--snapshot[/bold] / [bold]--mode {WATCH_MODE_SNAPSHOT}[/bold] "
+            "for frozen-checkpoint-only diffs."
+        )
     console.print(
         Panel(
             (
                 f"[bold green]Watch created.[/bold green]\n"
                 f"  id:        [cyan]{watch_id}[/cyan]\n"
                 f"  campaign:  [cyan]{campaign_id}[/cyan]\n"
-                f"  mode:      [cyan]{WATCH_MODE_SNAPSHOT}[/cyan] "
-                f"[dim](frozen state.json snapshot-diff)[/dim]\n"
+                f"  mode:      [cyan]{chosen_mode}[/cyan] "
+                f"{mode_note}\n"
                 f"  sensors:   [cyan]{len(sensors)}[/cyan]\n"
                 f"  config:    [cyan]{storage.config_path}[/cyan]\n\n"
-                f"[yellow]Note:[/yellow] ticks fingerprint the last "
-                f"campaign checkpoint — not live re-collection.\n"
                 f"Run periodically:\n"
                 f"  [bold]nexusrecon watch tick {watch_id}[/bold]"
             ),
@@ -2352,6 +2387,7 @@ def watch_list() -> None:
         console.print(
             f"[cyan]{w.watch_id}[/cyan]  "
             f"campaign=[cyan]{w.campaign_id}[/cyan]  "
+            f"mode=[cyan]{w.mode}[/cyan]  "
             f"sensors={len(w.sensors)}"
             + (f"  — {w.description}" if w.description else "")
         )
@@ -2361,8 +2397,8 @@ def watch_list() -> None:
 def watch_tick(
     watch_id: str = typer.Argument(...),
 ) -> None:
-    """Run one snapshot-diff pass over the campaign's frozen state.json."""
-    from nexusrecon.watch import tick
+    """Run one watch pass (re-collect by default, or snapshot if configured)."""
+    from nexusrecon.watch import WATCH_MODE_SNAPSHOT, tick
 
     result = tick(watch_id)
     if result.errors:
@@ -2371,9 +2407,12 @@ def watch_tick(
         if not result.sensors_evaluated:
             raise typer.Exit(1)
 
+    if result.mode == WATCH_MODE_SNAPSHOT:
+        mode_hint = "[dim](frozen state.json snapshot-diff)[/dim]"
+    else:
+        mode_hint = "[dim](re-collect seeds then fingerprint)[/dim]"
     body_lines = [
-        f"mode:              [cyan]{result.mode}[/cyan] "
-        f"[dim](frozen state.json — not live re-collection)[/dim]",
+        f"mode:              [cyan]{result.mode}[/cyan] {mode_hint}",
         f"sensors evaluated: [cyan]{result.sensors_evaluated}[/cyan]",
         f"sensors fired:     [cyan]{result.sensors_fired}[/cyan]",
     ]

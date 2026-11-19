@@ -70,11 +70,12 @@ ROADMAP “Demoted out of the 1.0 story”):
 dataclass exist; enforcement largely unread — keep the dispatch
 loop, treat the rest as roadmap), Recon Packs + Contribution SDK
 (loader/scaffolders exist; marketplace empty; first-party pack not
-on the default load path), Watch Mode (snapshot-diff of frozen
-`state.json`, not live monitoring), Vision (standalone CLI; default
+on the default load path), Vision (standalone CLI; default
 `vision_calls` budget 0), and the **Continuous Confidence Engine**
 (`nexusrecon/verification/` — opt-in via `--verify` /
-`NEXUS_ENABLE_VERIFY`; off by default). See ARCHITECTURE.md §§14–18, 21
+`NEXUS_ENABLE_VERIFY`; off by default). Watch Mode defaults to
+seed re-collect then fingerprint (crt.sh vertical slice; `--snapshot`
+keeps frozen-`state.json` diff). See ARCHITECTURE.md §§14–18, 21
 and ROADMAP demotions.
 
 ---
@@ -96,7 +97,7 @@ laptop with default API keys configured, typical 30-60 min run:
 | **Adversarial scan** | `nexusrecon adversarial scan` finds 2 subdomains lockstep-fabricated by an upstream wildcard DNS server → confidence halved + queued for review. |
 | **Phase 8** · attack-surface rank | Top thread: "KEV-listed VPN CVE on `vpn.acme.com` + 3 breached employees in scope for credential reuse". |
 | **Phase 9** · reports | `master_reporter` writes the narrative. STIX 2.1 export + Ed25519 signed receipt produced for downstream consumers. |
-| **Watch (optional)** | `nexusrecon watch create …` can fingerprint a campaign’s saved `state.json` and queue alerts / micro-campaigns on digest change. As shipped this is **snapshot-diff**, not live re-collection — see ROADMAP demotion. |
+| **Watch (optional)** | `nexusrecon watch create …` re-collects campaign seeds (crt.sh by default) then fingerprints; digests can move without a full campaign re-run. Pass `--snapshot` for frozen-`state.json`-only diff. |
 
 **Output**: a `campaigns/acme/<engagement>/<id>/reports/` directory
 with the master report + ranked threads + STIX bundle + signed receipt
@@ -106,7 +107,7 @@ By hand, you spend 6-8 hours bouncing across crt.sh, Subfinder, Amass,
 SecurityTrails, Shodan, Censys, urlscan, GitHub, Hunter, HIBP, NVD,
 KEV, EPSS, and Maltego, and you finish without the cross-tool
 correlation, LLM follow-up, ranked threats, audit chain, signed STIX
-bundle, or a snapshot-diff watch over the campaign checkpoint.
+bundle, or a Watch that re-collects seeds and diffs the fresh surface.
 
 ---
 
@@ -338,7 +339,7 @@ refresh `verification_health` / `weak_links`. See ARCHITECTURE.md section 14.
 | **Signed bundles** | `nexusrecon sign / verify` + `nexusrecon-verify` | Ed25519, passphrase-encrypted PEM keys. Console entry `nexusrecon-verify` runs/extracts the packaged cryptography-only asset (also at `scripts/nexusrecon-verify.py`). |
 | **Bidirectional import** | `nexusrecon ingest stix/nessus/nuclei/csv/bbot/amass` | Folds partner STIX, Nessus, Nuclei, CSV, BBOT NDJSON, and Amass enum JSON into the campaign graph (with provenance). |
 | **Downstream emitters** | `--format jira / nuclei-targets / cobaltstrike-profile` | Jira REST NDJSON, Nuclei `-list` targets, Cobalt Strike Malleable C2 profile stub (with explicit "review before deploying" warning). |
-| **Watch mode** _(snapshot-diff)_ | `nexusrecon watch` | Fingerprints frozen `state.json` via Entity/Scope/Timed sensors. Digests change only after a new campaign run. Tiered actions: low→alert, medium→notification, high→queued micro-campaign. Not live re-collection (F-006). |
+| **Watch mode** | `nexusrecon watch` | Default: re-collect seeds (crt.sh slice) then fingerprint via Entity/Scope/Timed sensors. `--snapshot` / `--mode snapshot` keeps frozen-`state.json` diff. Tiered actions: low→alert, medium→notification, high→queued micro-campaign (NEX-29). |
 | **Vision pipeline** | `nexusrecon vision scan` | Screenshots / PDFs / logos / QR codes → entities + narrative hypothesis. Multi-provider via langchain. Strategy-driven cost cap (`tool_budgets["vision_calls"]`). |
 
 ### Extensibility (Recon Pack format)
@@ -546,8 +547,8 @@ What's demoted / experimental (in-tree; not default-run product):
 - Recon Packs marketplace + Contribution SDK — empty marketplace
   URL; `packs/burp` checkout dogfood only (not in wheel / not
   default load path; NEX-17 decision)
-- Watch Mode — snapshot-diff of frozen `state.json`, not live
-  monitoring
+- Watch Mode — default re-collect is a crt.sh vertical slice (not
+  full phase-1); `--snapshot` remains for checkpoint-only diffs
 - Vision pipeline — standalone CLI; default budget 0; campaign does
   not feed it
 - Continuous Confidence Engine — opt-in via `--verify` / `NEXUS_ENABLE_VERIFY`; off by default

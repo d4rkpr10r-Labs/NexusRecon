@@ -1020,13 +1020,13 @@ Provides (when manually loaded):
 
 ## 18. Watch Mode (Phase 5 PR A)
 
-**Status (honesty / ROADMAP demotion):** As shipped, `tick` loads
-a campaign’s frozen `state.json` via `EntityGraph.from_state` and
-fingerprints that snapshot. Without re-collection, this cannot
-observe live attack-surface drift — treat Watch as **snapshot
-diff** / parked continuous monitoring, not a live sensor mesh.
-Micro-campaigns are queued only (no auto-exec), which is
-intentional.
+**Status (NEX-29):** Default `tick` **re-collects** campaign seeds
+(crt.sh vertical slice), materialises a stable-id EntityGraph, then
+fingerprints / diffs. That path can observe new subdomain names
+without a full campaign re-run. `--snapshot` / `mode: snapshot`
+keeps the frozen-`state.json` opt-in for checkpoint-only diffs.
+Micro-campaigns remain queued only (no auto-exec). Not a full
+phase-1 re-run (amass/subfinder/etc. are out of the default slice).
 
 **Problem.** A campaign is a single run. Real engagements need a
 continuous posture. Alert me when a new subdomain appears, when
@@ -1035,8 +1035,10 @@ vuln-source entity lands.
 
 **What landed (code).** `nexusrecon/watch/` provides sensors +
 severity classifier + tiered action policy + per-watch
-persistence.
+persistence + seed re-collection.
 
+- **Modes.** `recollect` (default) runs seed collectors then
+  fingerprints; `snapshot` loads frozen `state.json` only.
 - **Three sensor types.**
   - `EntitySensor`. Watches one entity by id. Fingerprint hashes
     confidence + sources + tags + edge degrees; any change fires.
@@ -1044,8 +1046,9 @@ persistence.
     `entity_type` / `parent_domain` / `value_contains` filter
     (AND semantics). Refuses construction with no filters so
     operators can't accidentally watch the whole graph.
+    `parent_domain` also feeds the recollect seed list.
   - `TimedSensor`. Fires on a cadence regardless of graph state
-    (still against the frozen snapshot — does not re-collect).
+    (recollect mode still refreshes the underlying graph first).
 - **Severity classifier**: rules cascade in priority:
   vuln-source addition → HIGH, new high-confidence entity →
   HIGH, new CITES edge into a Lead / Hypothesis → HIGH,

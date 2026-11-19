@@ -453,8 +453,10 @@ def _digest_entities(graph: Any, entity_ids: list[str]) -> str:
         if data is None:
             items.append({"entity_id": eid, "missing": True})
             continue
+        # Content-addressed: omit entity_id so digests stay stable
+        # across Watch reloads that assign fresh UUIDs (stable_ids
+        # graphs already pin ids; this is belt-and-suspenders).
         items.append({
-            "entity_id": eid,
             "entity_type": data.get("entity_type"),
             "value": data.get("value"),
             "confidence": float(data.get("confidence", 0.0)),
