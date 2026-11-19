@@ -1,0 +1,46 @@
+{
+  "meta": {
+    "name": "planted_interrupt",
+    "scope": "example.test",
+    "description": "Mid-campaign interrupt fixture after phase2 (NEX-31). Resume hydrate must preserve entity-set hash.",
+    "interrupt_after": "phase2"
+  },
+  "state": {
+    "campaign_id": "bench-interrupt-1",
+    "engagement_id": "BENCH-INT-001",
+    "seeds": ["example.test"],
+    "completed_phases": ["phase1", "phase2"],
+    "current_phase": "phase2_5",
+    "subdomain_intel": {
+      "api.example.test": {"sources": ["crtsh", "certspotter"]},
+      "mail.example.test": {"sources": ["hackertarget"]},
+      "www.example.test": {"sources": ["chaos"]}
+    },
+    "email_intel": {
+      "emails": {
+        "ops@example.test": {"sources": ["hunter"]}
+      }
+    },
+    "cloud_intel": {
+      "azure/onmicrosoft": {
+        "attribution_confidence": 1.0,
+        "attribution_signals": ["openid_config_verified"]
+      }
+    },
+    "code_intel": {},
+    "infra_intel": {},
+    "findings": [],
+    "hypotheses": [
+      "mail.example.test hosts corporate MX for example.test"
+    ],
+    "confirmed_leads": [
+      "azure/onmicrosoft tenant confirmed for example.test"
+    ],
+    "open_questions": [
+      "Does api.example.test expose authenticated admin?"
+    ],
+    "dispatch_mode": "off",
+    "llm_cost_usd": 0.0,
+    "errors": []
+  }
+}

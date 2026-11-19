@@ -2,9 +2,11 @@
   "meta": {
     "name": "planted_passive",
     "scope": "example.test",
-    "description": "Synthetic passive intel for NEX-20 fixture benchmarks (no live APIs).",
+    "description": "Synthetic passive intel for NEX-20/NEX-31 fixture benchmarks (no live APIs).",
     "baseline_recall": 1.0,
-    "provenance_threshold": 0.99
+    "provenance_threshold": 0.99,
+    "attribution_precision_threshold": 0.95,
+    "max_time_to_evidence_seconds": 2.0
   },
   "ground_truth": {
     "subdomains": [
@@ -19,13 +21,44 @@
     ],
     "domains": [
       "example.test"
-    ]
+    ],
+    "attribution": {
+      "must_merge": [
+        [
+          ["subdomain", "API.example.test"],
+          ["subdomain", "api.example.test"]
+        ],
+        [
+          ["email", "OPS@example.test"],
+          ["email", "ops@example.test"]
+        ]
+      ],
+      "must_not_merge": [
+        [
+          ["subdomain", "api.example.test"],
+          ["subdomain", "mail.example.test"]
+        ],
+        [
+          ["email", "ops@example.test"],
+          ["email", "ceo@example.test"]
+        ],
+        [
+          ["subdomain", "api.example.test"],
+          ["cloud_asset", "aws/s3"]
+        ],
+        [
+          ["cloud_asset", "aws/s3"],
+          ["cloud_asset", "azure/onmicrosoft"]
+        ]
+      ]
+    }
   },
   "state": {
     "campaign_id": "bench-passive-1",
     "engagement_id": "BENCH-001",
     "seeds": ["example.test"],
     "subdomain_intel": {
+      "API.example.test": {"sources": ["crtsh"]},
       "api.example.test": {"sources": ["crtsh", "certspotter"]},
       "mail.example.test": {"sources": ["hackertarget"]},
       "vpn.example.test": {"sources": ["chaos"]},
@@ -33,15 +66,36 @@
     },
     "email_intel": {
       "emails": {
-        "ops@example.test": {"sources": ["hunter"]},
+        "OPS@example.test": {"sources": ["hunter"]},
+        "ops@example.test": {"sources": ["hunter", "theharvester"]},
         "ceo@example.test": {"source": "theharvester"}
       }
     },
-    "cloud_intel": {},
+    "cloud_intel": {
+      "aws/s3": {
+        "attribution_confidence": 0.2,
+        "attribution_signals": ["stem_enumeration_only"],
+        "buckets": []
+      },
+      "azure/onmicrosoft": {
+        "attribution_confidence": 1.0,
+        "attribution_signals": ["openid_config_verified"]
+      }
+    },
     "code_intel": {},
     "findings": [],
-    "hypotheses": [],
-    "confirmed_leads": [],
+    "hypotheses": [
+      "api.example.test may expose an unauthenticated admin panel"
+    ],
+    "confirmed_leads": [
+      {
+        "statement": "Public S3 stem hit for example.test is low-confidence only — azure/onmicrosoft tenant verified via openid-config",
+        "severity": "high",
+        "confidence": 0.9,
+        "source": "phase4_correlation",
+        "recommended_action": "Validate azure tenant ownership; treat aws/s3 as POSSIBLE"
+      }
+    ],
     "open_questions": []
   }
 }
