@@ -48,19 +48,6 @@ from typing import Any, TypeVar
 import networkx as nx
 import structlog
 
-
-def stable_entity_id(entity_type: str, value: str) -> str:
-    """Deterministic id for ``(entity_type, value)``.
-
-    Watch Mode reloads / re-collects into a fresh graph each tick.
-    Random UUIDs would churn fingerprints every pass; content-addressed
-    ids keep digests stable when the observed surface is unchanged.
-    """
-    digest = hashlib.sha256(
-        f"{entity_type}:{value.lower()}".encode("utf-8"),
-    ).hexdigest()
-    return f"nr-{digest[:32]}"
-
 from nexusrecon.models.entities import (
     BaseEntity,
     CloudAssetEntity,
@@ -83,6 +70,19 @@ from nexusrecon.models.entities import (
 
 log = structlog.get_logger(__name__)
 E = TypeVar("E", bound=BaseEntity)
+
+
+def stable_entity_id(entity_type: str, value: str) -> str:
+    """Deterministic id for ``(entity_type, value)``.
+
+    Watch Mode reloads / re-collects into a fresh graph each tick.
+    Random UUIDs would churn fingerprints every pass; content-addressed
+    ids keep digests stable when the observed surface is unchanged.
+    """
+    digest = hashlib.sha256(
+        f"{entity_type}:{value.lower()}".encode(),
+    ).hexdigest()
+    return f"nr-{digest[:32]}"
 
 
 #: Relationship types where an entity can have AT MOST ONE
