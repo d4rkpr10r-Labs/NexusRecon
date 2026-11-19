@@ -84,13 +84,15 @@ class WatchAlert:
         }
 
 
-# Supported watch modes. ``snapshot`` (default) fingerprints the
-# campaign's frozen state.json. ``recollect`` is reserved for a
-# future vertical slice that re-runs seed collectors before
-# fingerprinting — not implemented in NEX-14 (F-006 honesty pass).
+# Supported watch modes (NEX-29).
+# ``recollect`` (default) re-runs seed collectors then fingerprints.
+# ``snapshot`` is the explicit opt-in frozen-state.json path.
 WATCH_MODE_SNAPSHOT = "snapshot"
 WATCH_MODE_RECOLLECT = "recollect"
-SUPPORTED_WATCH_MODES = frozenset({WATCH_MODE_SNAPSHOT})
+SUPPORTED_WATCH_MODES = frozenset({
+    WATCH_MODE_SNAPSHOT,
+    WATCH_MODE_RECOLLECT,
+})
 
 
 @dataclass
@@ -104,11 +106,10 @@ class Watch:
     campaign_id: str
     sensors: list[Sensor]
     description: str = ""
-    mode: str = WATCH_MODE_SNAPSHOT
-    """Graph source for each tick. ``snapshot`` (default) rebuilds
-    from the campaign's frozen ``state.json`` — fingerprint changes
-    only after a new campaign run writes a new checkpoint. Live
-    re-collection is not implemented; see F-006 / NEX-14."""
+    mode: str = WATCH_MODE_RECOLLECT
+    """Graph source for each tick. ``recollect`` (default) re-runs
+    seed collectors then fingerprints; ``snapshot`` diffs the
+    campaign's frozen ``state.json`` only (explicit opt-in)."""
     auto_dispatch_micro_campaigns: bool = False
     """When True, the runner doesn't just queue high-severity
     micro-campaign requests — it also writes a launch script
@@ -131,12 +132,15 @@ class Watch:
 
     @classmethod
     def from_dict(cls, raw: dict[str, Any]) -> Watch:
-        mode = str(raw.get("mode") or WATCH_MODE_SNAPSHOT).lower()
+        # Missing mode → recollect (current default). Explicit
+        # ``snapshot`` from pre-NEX-29 configs is preserved.
+        if "mode" not in raw or raw.get("mode") in (None, ""):
+            mode = WATCH_MODE_RECOLLECT
+        else:
+            mode = str(raw.get("mode")).lower()
         if mode not in SUPPORTED_WATCH_MODES:
-            # Unknown / future modes fall back to snapshot so old
-            # configs and speculative ``recollect`` keys still load;
-            # the runner surfaces the effective mode in tick output.
-            mode = WATCH_MODE_SNAPSHOT
+            # Unknown modes fall back to the live default.
+            mode = WATCH_MODE_RECOLLECT
         return cls(
             watch_id=str(raw["watch_id"]),
             campaign_id=str(raw["campaign_id"]),

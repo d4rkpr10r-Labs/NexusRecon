@@ -19,7 +19,7 @@ Ordered by dependency. Items marked **done-on-branch** are in `cursor/assurance-
 ## P2 — Knowledge plane
 
 8. **Wire Continuous Confidence behind `--verify` / config flag** after P0.4 — *done (NEX-13)*.
-9. **Watch vertical slice: re-collect seeds then fingerprint** — or permanently label CLI as snapshot-diff (F-006) — *honesty relabel done (NEX-14); re-collect still deferred*.
+9. **Watch vertical slice: re-collect seeds then fingerprint** — or permanently label CLI as snapshot-diff (F-006) — *done: NEX-14 honesty + NEX-29 recollect default (crt.sh slice); snapshot opt-in*.
 10. **Enforce Strategy `tool_budgets` / kill / success criteria** or remove from planner prompts — *honesty demotion complete (NEX-15 + NEX-30: task prompt, CrewAI persona, field docs); full run-path enforcement still deferred / not cheap*.
 
 ## P3 — Interop / packaging

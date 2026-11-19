@@ -164,7 +164,7 @@ Operating envelope targets (to measure, not prescribe DB): 1k entities interacti
 | Correlation / leads | phase 4 / 8 | Default | default path | tests | Provenance writers |
 | Strategy budgets | `plan` / Strategy obj | Explicit | partially integrated | source inspection | Criteria unread |
 | Confidence verify | `verification/` | Not on run | stubbed/planned wiring | unit only | No production caller |
-| Watch freshness | `watch tick` | Explicit CLI | standalone / broken for live | unit + ROADMAP | Frozen state loader |
+| Watch freshness | `watch tick` | Explicit CLI | recollect default (crt.sh slice); snapshot opt-in | unit + NEX-29 | `watch/recollect.py` |
 | Packs | `packs` CLI | Explicit | partially integrated | source | Empty marketplace; burp not in wheel |
 | Vision | `vision scan` | Explicit; budget 0 | standalone | unit | No campaign feed |
 | STIX sign/verify | export / scripts | Explicit | default export; verify script unpackaged | executed leak repro | Redaction bug |

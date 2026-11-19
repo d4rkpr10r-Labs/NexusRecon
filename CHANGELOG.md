@@ -7,6 +7,14 @@ minor bumps (0.x → 0.x+1) may break APIs.
 
 ## [Unreleased]
 
+### Watch Mode
+
+- **Watch re-collect default** (NEX-29 / F-006): `nexusrecon watch`
+  ticks re-run seed collectors (crt.sh vertical slice) then
+  fingerprint/diff. `--snapshot` / `--mode snapshot` keeps frozen
+  `state.json` diff as an explicit opt-in. Stable content-addressed
+  entity ids keep digests stable across reloads.
+
 ### Docs honesty
 
 - **Strategy criteria persona demotion** (NEX-30 / F-008): CrewAI

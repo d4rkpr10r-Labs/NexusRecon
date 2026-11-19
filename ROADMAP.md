@@ -278,10 +278,11 @@ can be promoted later if a real need appears.
   callers, so a contributor's agent silently loses its advertised validation.
   Either wire those guardrails into the real executor or remove them from
   scaffold output; do not ship a fake-success seam as a feature.
-- **Watch Mode (`watch/`).** As shipped it diffs a frozen `state.json` against
-  itself, so "continuous monitoring" structurally cannot observe live drift.
-  Relabel honestly as "snapshot diff" or leave parked here. Do not let it imply
-  live attack-surface monitoring it cannot do.
+- **Watch Mode breadth (`watch/`).** Default ticks now re-collect seeds
+  (crt.sh vertical slice, NEX-29) before fingerprinting; `--snapshot` keeps
+  frozen-`state.json` diff. Still not a full phase-1 re-run or live notification
+  mesh — broaden collectors / auto-dispatch only with explicit scope, not by
+  implying full continuous monitoring.
 - **Strategy framing (`strategy/`).** Keep the dispatch loop (`reflection_node`
   plus the dynamic dispatcher is real and earns its keep). Demote the rest: the
   pre-flight simulation always estimates $0.00 and never enforces its abort,

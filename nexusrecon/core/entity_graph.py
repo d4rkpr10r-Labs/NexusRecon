@@ -39,6 +39,7 @@ What's still TODO per ARCHITECTURE.md §13-22
 
 from __future__ import annotations
 
+import hashlib
 import json
 from datetime import datetime
 from pathlib import Path
@@ -69,6 +70,19 @@ from nexusrecon.models.entities import (
 
 log = structlog.get_logger(__name__)
 E = TypeVar("E", bound=BaseEntity)
+
+
+def stable_entity_id(entity_type: str, value: str) -> str:
+    """Deterministic id for ``(entity_type, value)``.
+
+    Watch Mode reloads / re-collects into a fresh graph each tick.
+    Random UUIDs would churn fingerprints every pass; content-addressed
+    ids keep digests stable when the observed surface is unchanged.
+    """
+    digest = hashlib.sha256(
+        f"{entity_type}:{value.lower()}".encode(),
+    ).hexdigest()
+    return f"nr-{digest[:32]}"
 
 
 #: Relationship types where an entity can have AT MOST ONE
@@ -145,9 +159,16 @@ class EntityGraph:
     Edges: relationships (resolves_to, has_subdomain, contains_secret, etc.)
     """
 
-    def __init__(self, campaign_id: str, engagement_id: str) -> None:
+    def __init__(
+        self,
+        campaign_id: str,
+        engagement_id: str,
+        *,
+        stable_ids: bool = False,
+    ) -> None:
         self.campaign_id = campaign_id
         self.engagement_id = engagement_id
+        self.stable_ids = stable_ids
         self.graph = nx.DiGraph()
         self._value_index: dict[tuple[str, str], str] = {}  # (type, value) -> entity_id
         # Phase 2 PR A: mutation listeners. Each callable receives
@@ -240,6 +261,12 @@ class EntityGraph:
         """
         entity.engagement_id = self.engagement_id
         idx_key = (entity.entity_type.value, entity.value.lower())
+        if self.stable_ids:
+            # Assign before the merge/add branch so new nodes keep a
+            # content-addressed id across Watch tick reloads.
+            entity.entity_id = stable_entity_id(
+                entity.entity_type.value, entity.value,
+            )
 
         if idx_key in self._value_index:
             # Merge into existing
@@ -1155,6 +1182,7 @@ class EntityGraph:
         *,
         campaign_id: str = "",
         engagement_id: str = "",
+        stable_ids: bool = False,
     ) -> EntityGraph:
         """Build a populated :class:`EntityGraph` from the flat
         ``CampaignGraphState`` buckets.
@@ -1174,6 +1202,8 @@ class EntityGraph:
             state: The LangGraph campaign state dict.
             campaign_id: Override; otherwise read from state.
             engagement_id: Override; otherwise read from state.
+            stable_ids: When True, entity ids are content-addressed
+                so Watch tick reloads keep stable fingerprints.
 
         Returns:
             A fresh ``EntityGraph`` populated from the flat
@@ -1185,6 +1215,7 @@ class EntityGraph:
         g = cls(
             campaign_id=campaign_id or state.get("campaign_id", ""),
             engagement_id=engagement_id or state.get("engagement_id", ""),
+            stable_ids=stable_ids,
         )
         # NEX-13 / F-007: when Continuous Confidence is opted in, attach
         # the orchestrator *before* materialising entities so multi-source
