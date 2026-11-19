@@ -309,6 +309,13 @@ deep-dives.
 
 ### Added
 
+- **Audit `response_hash` → Living Graph `evidence_hash` join**
+  (NEX-28): `ToolRegistry.execute` stamps `ToolResult.response_hash`
+  (same value written to the hash-chained audit log when bound);
+  phase1/phase2 intel writers carry it; `EntityGraph.from_state` /
+  `add_*` helpers forward it into `ProvenanceRecord.evidence_hash`
+  when present. Hash is absent when no tool response was audited —
+  provenance still records the source name.
 - **Provider-OAuth LLM authentication** (`nexusrecon/llm/`): new
   `NEXUS_LLM_AUTH_MODE=auto|oauth|api_key` setting (default `auto`)
   resolves cloud-provider credentials by preferring the official CLI

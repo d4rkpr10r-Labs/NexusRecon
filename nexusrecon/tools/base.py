@@ -117,6 +117,11 @@ class ToolResult:
     #: Set centrally by the registry from :meth:`OSINTTool.assess_result`.
     degraded: bool = False
     degraded_reason: str | None = None
+    #: sha256 of ``data`` (or the audit sentinel ``"cached"`` on cache
+    #: hits). Set by ``ToolRegistry.execute`` so Living Graph writers can
+    #: join this value into ``ProvenanceRecord.evidence_hash`` when the
+    #: same hash is written to the audit log.
+    response_hash: str | None = None
 
 
 class OSINTTool(abc.ABC):

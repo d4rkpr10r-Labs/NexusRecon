@@ -481,8 +481,11 @@ class ToolRegistry:
         if self._cache is not None:
             cached_data = self._cache.get(tool_name, cache_key)
             if cached_data is not None:
+                # Keep the audit sentinel so ProvenanceRecord.evidence_hash
+                # joins the same value written to the hash-chained log.
+                response_hash = "cached"
                 if self._audit_log:
-                    self._audit_log.log_tool_result(tool_name, target, "cached", 0, 0, cached=True)
+                    self._audit_log.log_tool_result(tool_name, target, response_hash, 0, 0, cached=True)
                 # TUI-8: cache hits count as invocations for the
                 # tool's recent-activity surface.
                 self._record_invocation(
@@ -493,7 +496,13 @@ class ToolRegistry:
                     target=target,
                     cached=True,
                 )
-                return ToolResult(success=True, source=tool_name, data=cached_data, cached=True)
+                return ToolResult(
+                    success=True,
+                    source=tool_name,
+                    data=cached_data,
+                    cached=True,
+                    response_hash=response_hash,
+                )
 
         # ── OPSEC: rate-limit per source (token bucket + burst detector) ──────
         # When a stealth profile is bound to the registry, this awaits the
@@ -583,23 +592,27 @@ class ToolRegistry:
         if self._cache is not None and result.success and result.data is not None:
             self._cache.set(tool_name, cache_key, result.data)
 
-        # ── Audit: result / error ──────────────────────────────────────────────
-        if self._audit_log:
-            if result.success:
-                raw = json.dumps(result.data, default=str)
-                response_hash = "sha256:" + hashlib.sha256(raw.encode()).hexdigest()
+        # ── Response hash + audit ──────────────────────────────────────────────
+        # Always stamp response_hash on success so Living Graph intel writers
+        # can join it into ProvenanceRecord.evidence_hash even when no audit
+        # log is bound; when audit is bound, log the identical value.
+        if result.success:
+            raw = json.dumps(result.data, default=str)
+            response_hash = "sha256:" + hashlib.sha256(raw.encode()).hexdigest()
+            result.response_hash = response_hash
+            if self._audit_log:
                 self._audit_log.log_tool_result(
                     tool_name, target, response_hash, runtime_ms, result.result_count,
                     degraded=result.degraded, degraded_reason=result.degraded_reason,
                 )
-            else:
-                # Never drop the reason (Wave F-A4): a tool that returns
-                # success=False with no error string still gets a concrete,
-                # greppable message instead of a silent blank in the trail.
-                self._audit_log.log_tool_error(
-                    tool_name, target,
-                    result.error or f"{tool_name} reported failure without an error message",
-                )
+        elif self._audit_log:
+            # Never drop the reason (Wave F-A4): a tool that returns
+            # success=False with no error string still gets a concrete,
+            # greppable message instead of a silent blank in the trail.
+            self._audit_log.log_tool_error(
+                tool_name, target,
+                result.error or f"{tool_name} reported failure without an error message",
+            )
 
         return result
 

@@ -467,37 +467,61 @@ class EntityGraph:
 
     # ── Convenience entity builders ───────────────────────────────────────────
 
+    @staticmethod
+    def _pop_provenance_fields(
+        kwargs: dict[str, Any],
+    ) -> tuple[str | None, str | None]:
+        """Pull audit-join fields out of entity constructor kwargs.
+
+        ``evidence_hash`` / ``tool_name`` belong on ``ProvenanceRecord``,
+        not on the entity model — pop them so callers can pass them
+        through ``add_*`` without Pydantic rejecting or silently
+        dropping the join key.
+        """
+        evidence_hash = kwargs.pop("evidence_hash", None)
+        tool_name = kwargs.pop("tool_name", None)
+        return (
+            str(evidence_hash) if evidence_hash else None,
+            str(tool_name) if tool_name else None,
+        )
+
     def add_domain(self, domain: str, source: str, **kwargs: Any) -> str:
+        evidence_hash, tool_name = self._pop_provenance_fields(kwargs)
         e = DomainEntity(value=domain, **kwargs)
-        e.add_provenance(source)
+        e.add_provenance(source, evidence_hash=evidence_hash, tool_name=tool_name)
         return self.add_entity(e)
 
     def add_subdomain(self, subdomain: str, parent: str, source: str, **kwargs: Any) -> str:
+        evidence_hash, tool_name = self._pop_provenance_fields(kwargs)
         e = SubdomainEntity(value=subdomain, parent_domain=parent, **kwargs)
-        e.add_provenance(source)
+        e.add_provenance(source, evidence_hash=evidence_hash, tool_name=tool_name)
         return self.add_entity(e)
 
     def add_ip(self, ip: str, source: str, **kwargs: Any) -> str:
+        evidence_hash, tool_name = self._pop_provenance_fields(kwargs)
         e = IPAddressEntity(value=ip, **kwargs)
-        e.add_provenance(source)
+        e.add_provenance(source, evidence_hash=evidence_hash, tool_name=tool_name)
         return self.add_entity(e)
 
     def add_email(self, email: str, source: str, **kwargs: Any) -> str:
+        evidence_hash, tool_name = self._pop_provenance_fields(kwargs)
         parts = email.lower().split("@")
         local = parts[0] if len(parts) == 2 else email
         domain = parts[1] if len(parts) == 2 else ""
         e = EmailEntity(value=email.lower(), local_part=local, domain=domain, **kwargs)
-        e.add_provenance(source)
+        e.add_provenance(source, evidence_hash=evidence_hash, tool_name=tool_name)
         return self.add_entity(e)
 
     def add_cloud_asset(self, asset_value: str, provider: str, service: str, source: str, **kwargs: Any) -> str:
+        evidence_hash, tool_name = self._pop_provenance_fields(kwargs)
         e = CloudAssetEntity(
             value=asset_value, provider=provider, service_type=service, **kwargs
         )
-        e.add_provenance(source)
+        e.add_provenance(source, evidence_hash=evidence_hash, tool_name=tool_name)
         return self.add_entity(e)
 
     def add_repository(self, full_name: str, platform: str, source: str, **kwargs: Any) -> str:
+        evidence_hash, tool_name = self._pop_provenance_fields(kwargs)
         parts = full_name.split("/")
         org = parts[0] if len(parts) == 2 else None
         repo_name = parts[-1]
@@ -505,27 +529,31 @@ class EntityGraph:
             value=full_name, platform=platform, full_name=full_name,
             org=org, repo_name=repo_name, **kwargs
         )
-        e.add_provenance(source)
+        e.add_provenance(source, evidence_hash=evidence_hash, tool_name=tool_name)
         return self.add_entity(e)
 
     def add_secret(self, identifier: str, secret_type: str, source: str, **kwargs: Any) -> str:
+        evidence_hash, tool_name = self._pop_provenance_fields(kwargs)
         e = SecretEntity(value=identifier, secret_type=secret_type, **kwargs)
-        e.add_provenance(source)
+        e.add_provenance(source, evidence_hash=evidence_hash, tool_name=tool_name)
         return self.add_entity(e)
 
     def add_technology(self, product: str, source: str, **kwargs: Any) -> str:
+        evidence_hash, tool_name = self._pop_provenance_fields(kwargs)
         e = TechnologyEntity(value=product, product=product, **kwargs)
-        e.add_provenance(source)
+        e.add_provenance(source, evidence_hash=evidence_hash, tool_name=tool_name)
         return self.add_entity(e)
 
     def add_cve(self, cve_id: str, source: str, **kwargs: Any) -> str:
+        evidence_hash, tool_name = self._pop_provenance_fields(kwargs)
         e = CVEEntity(value=cve_id, cve_id=cve_id, **kwargs)
-        e.add_provenance(source)
+        e.add_provenance(source, evidence_hash=evidence_hash, tool_name=tool_name)
         return self.add_entity(e)
 
     def add_person(self, name: str, source: str, **kwargs: Any) -> str:
+        evidence_hash, tool_name = self._pop_provenance_fields(kwargs)
         e = PersonEntity(value=name, full_name=name, **kwargs)
-        e.add_provenance(source)
+        e.add_provenance(source, evidence_hash=evidence_hash, tool_name=tool_name)
         return self.add_entity(e)
 
     # ── Reasoning artifacts (Step 0.0) ────────────────────────────────────────
@@ -1214,6 +1242,25 @@ class EntityGraph:
                 return [singular]
             return [default]
 
+        def _intel_evidence_hash(info: Any, source: str) -> str | None:
+            """Join audit ``response_hash`` carried on intel into provenance.
+
+            Phase writers store either ``evidence_hashes`` (source → hash
+            map, used by subdomain collectors) or singular ``evidence_hash``
+            alongside singular ``source`` (email collectors). Missing
+            hashes stay ``None`` — provenance still stamps the source.
+            """
+            if not isinstance(info, dict):
+                return None
+            hashes = info.get("evidence_hashes")
+            if isinstance(hashes, dict):
+                val = hashes.get(source)
+                return str(val) if val else None
+            singular = info.get("evidence_hash")
+            if singular and info.get("source") == source:
+                return str(singular)
+            return None
+
         # Subdomains: each key in subdomain_intel is a subdomain;
         # the values may carry source-tool info. We harvest the
         # full source list if present, defaulting to a generic marker.
@@ -1225,9 +1272,19 @@ class EntityGraph:
             # Best-effort parent domain inference: last two labels.
             parts = sub.split(".")
             parent = ".".join(parts[-2:]) if len(parts) >= 2 else sub
-            sid = g.add_subdomain(sub, parent=parent, source=sources[0])
+            sid = g.add_subdomain(
+                sub,
+                parent=parent,
+                source=sources[0],
+                evidence_hash=_intel_evidence_hash(info, sources[0]),
+            )
             for source in sources[1:]:
-                sid = g.add_subdomain(sub, parent=parent, source=source)
+                sid = g.add_subdomain(
+                    sub,
+                    parent=parent,
+                    source=source,
+                    evidence_hash=_intel_evidence_hash(info, source),
+                )
             sub_to_id[sub] = sid
             # Connect the subdomain to its parent domain node so the graph is
             # traversable from the seed down rather than a flat list.
@@ -1244,7 +1301,11 @@ class EntityGraph:
                 continue
             sources = _intel_sources(info, "phase2")
             for source in sources:
-                g.add_email(em, source=source)
+                g.add_email(
+                    em,
+                    source=source,
+                    evidence_hash=_intel_evidence_hash(info, source),
+                )
 
         # Cloud assets: cloud_intel keys are typically
         # ``provider/service`` strings; we record one
