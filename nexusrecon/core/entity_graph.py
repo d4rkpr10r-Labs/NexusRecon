@@ -1456,7 +1456,23 @@ class EntityGraph:
                                        generated_by="phase4", cites=cites)
                 downstream.append((hid, set(cites)))
         for ld in (state.get("confirmed_leads") or []):
-            if isinstance(ld, str) and ld:
+            # NEX-31: accept structured leads so fixture benchmarks can
+            # plant High/critical severity for time-to-evidence gates.
+            if isinstance(ld, dict):
+                statement = str(ld.get("statement") or ld.get("value") or "").strip()
+                if not statement:
+                    continue
+                cites = _mentioned_ids(statement)
+                lid = g.add_lead(
+                    statement,
+                    source=str(ld.get("source") or "phase4_correlation"),
+                    cites=cites,
+                    confidence=float(ld.get("confidence") or 0.8),
+                    severity=str(ld.get("severity") or "medium"),
+                    recommended_action=ld.get("recommended_action"),
+                )
+                downstream.append((lid, set(cites)))
+            elif isinstance(ld, str) and ld:
                 cites = _mentioned_ids(ld)
                 lid = g.add_lead(ld, source="phase4_correlation", cites=cites)
                 downstream.append((lid, set(cites)))
